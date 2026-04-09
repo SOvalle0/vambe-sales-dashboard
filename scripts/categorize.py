@@ -553,7 +553,7 @@ def process_row(i, row, total):
 
 def main():
     df = pd.read_csv("data/vambe_clients.csv")
-    output_path = "data/clients_categorized.json"
+    output_path = "src/data/clients_categorized.json"
     results = []
 
     if os.path.exists(output_path):

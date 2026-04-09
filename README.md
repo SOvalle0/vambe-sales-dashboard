@@ -85,11 +85,7 @@ Obtener una key gratuita en: [https://aistudio.google.com/apikey](https://aistud
 python scripts/categorize.py
 ```
 
-Genera `data/clients_categorized.json`. Luego copiar al src:
-
-```bash
-cp data/clients_categorized.json src/data/
-```
+El script genera `src/data/clients_categorized.json` directamente — sin pasos manuales adicionales.
 
 ---
 
@@ -148,8 +144,7 @@ Ver [`DECISIONES.md`](./DECISIONES.md) para la documentación completa de las de
 ```
 vambe-sales-dashboard/
 ├── data/
-│   ├── vambe_clients.csv              ← CSV original de la prueba
-│   └── clients_categorized.json       ← JSON procesado por el script
+│   └── vambe_clients.csv              ← CSV original de la prueba
 ├── scripts/
 │   └── categorize.py                  ← Script de categorización con Gemini
 ├── src/
