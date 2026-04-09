@@ -5,9 +5,11 @@ import {
   CartesianGrid, Cell, LabelList,
 } from 'recharts'
 import KPICard from '../components/KPICard'
+import ChartCard from '../components/ChartCard'
 import ClientDetail from '../components/ClientDetail'
 import useFilteredClients from '../hooks/useFilteredClients'
 import Filters from '../components/Filters'
+import AccionesRecomendadas from '../components/AccionesRecomendadas'
 
 const fmt = (n) => {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
@@ -67,40 +69,6 @@ function heatColor(pct) {
   return                  { bg: 'bg-amber-400', text: 'text-white' }
 }
 
-// ── ChartCard ──
-function ChartCard({ title, subtitle, isAI, insight, methodology, children }) {
-  const [showInsight, setShowInsight] = useState(true)
-  const [showMethod,  setShowMethod]  = useState(false)
-  return (
-    <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-      <div className="flex items-baseline gap-1 mb-1">
-        <h2 className="text-base font-semibold text-text">{title}</h2>
-        {isAI && <span className="text-text-muted text-sm" title="Variable derivada con IA">*</span>}
-      </div>
-      <p className="text-xs text-text-muted mb-4">{subtitle}</p>
-      {children}
-      <div className="flex gap-3 mt-3">
-        {insight && (
-          <button onClick={() => setShowInsight(v => !v)} className="text-[11px] text-brand hover:text-brand-hover font-medium transition-colors">
-            {showInsight ? '▾ Ocultar insight' : '▸ Insight'}
-          </button>
-        )}
-        {methodology && (
-          <button onClick={() => setShowMethod(v => !v)} className="text-[11px] text-text-muted hover:text-text-secondary transition-colors">
-            {showMethod ? '▾ Ocultar metodología' : '▸ ¿Cómo se calcula?'}
-          </button>
-        )}
-      </div>
-      {showInsight && insight && (
-        <p className="mt-2 text-xs text-brand/80 leading-relaxed bg-brand-light border-l-2 border-brand/30 pl-3 py-2 rounded-r">⚡ {insight}</p>
-      )}
-      {showMethod && methodology && (
-        <p className="mt-2 text-[11px] text-text-muted leading-relaxed border-l-2 border-border pl-3">{methodology}</p>
-      )}
-    </div>
-  )
-}
-
 function SectionHeader({ title, subtitle }) {
   return (
     <div className="mt-8 mb-4">
@@ -124,7 +92,7 @@ function LollipopBar({ x, y, width, height, fill }) {
 // ── Tooltip helper ──
 function TBox({ lines }) {
   return (
-    <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-md text-sm">
+    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm" style={{ boxShadow: '0 4px 16px rgba(37,99,235,0.10), 0 1px 4px rgba(15,23,42,0.06)' }}>
       {lines.map((l, i) => (
         <p key={i} className={i === 0 ? 'font-medium text-text' : 'text-text-secondary text-xs mt-0.5'}>{l}</p>
       ))}
@@ -139,58 +107,6 @@ function insightHealthBar(hb) {
   if (hb.critical.mrr > hb.total.mrr * 0.15)
     return `${fmt(hb.critical.mrr)}/mes en zona crítica — intervención urgente esta semana. ${expPct}% del MRR activo tiene algún nivel de riesgo.`
   return `${expPct}% del MRR activo tiene algún nivel de riesgo. ${hb.safe.count} clientes (${fmt(hb.safe.mrr)}/mes) en condiciones de entrada saludables.`
-}
-
-function insightWaterfall(critMRR, totalMRR) {
-  const pct = Math.round(critMRR / (totalMRR || 1) * 100)
-  if (pct > 15) return `Alerta: ${pct}% del MRR en zona crítica — requiere coordinación inmediata CS + Soporte.`
-  return `${pct}% del MRR en zona crítica — manejable con esfuerzo focalizado en los primeros 14 días.`
-}
-
-function insightFlagsFreq(data) {
-  if (!data.length) return ''
-  const top = data[0], second = data[1]
-  return `"${top.fullFlag}" es el riesgo más frecuente (${top.pct}% de clientes). "${second?.fullFlag}" en segundo lugar (${second?.pct}%). El onboarding debe priorizarlos en ese orden.`
-}
-
-function insightUrgency(data) {
-  const alta  = data.find(d => d.urgencia === 'Alta')
-  const media = data.find(d => d.urgencia === 'Media')
-  if (!alta || !media) return ''
-  const diff = (alta['Crítico'] || 0) - (media['Crítico'] || 0)
-  if (diff > 5) return `Clientes con urgencia Alta tienen ${diff} puntos porcentuales más de riesgo crítico. Urgencia = señal de alerta, no de facilidad. Asignar CS dedicado desde el día 1.`
-  return 'La distribución de riesgo es similar entre urgencias Alta y Media. El onboarding estándar aplica para ambos segmentos.'
-}
-
-function insightCanal(data) {
-  if (!data.length) return ''
-  const worst = data[0], best = data[data.length - 1]
-  return `${worst.canal} genera el mayor riesgo promedio (${worst.avgRisk}/4). ${best.canal} el menor (${best.avgRisk}/4). Ajustar el protocolo de bienvenida según el canal de origen.`
-}
-
-function insightVendedor(data) {
-  if (data.length < 2) return ''
-  const worst = data[0], best = data[data.length - 1]
-  return `${worst.vendedor} cierra deals con risk promedio ${worst.avgRisk} vs ${best.avgRisk} de ${best.vendedor}. Puede reflejar que cada vendedor trabaja segmentos con distinta complejidad técnica.`
-}
-
-function insightIndustria(data) {
-  if (!data.length) return ''
-  const worst = data[0]
-  const topFlag = [...worst.flags].sort((a, b) => b.pct - a.pct)[0]
-  return `${worst.ind} concentra el mayor riesgo promedio (${worst.avgRisk}/4) — ${topFlag?.pct}% de sus clientes tienen "${topFlag?.flag}". Preparar guía de onboarding específica para esta vertical.`
-}
-
-function insightMrrByFlag(data) {
-  if (!data.length) return ''
-  const top = data[0]
-  return `"${top.fullFlag}" tiene mayor MRR expuesto (${fmt(top.mrr)}/mes en ${top.count} clientes). Resolver esta fricción primero tiene el mayor impacto en revenue.`
-}
-
-function insightTable(wonClients, criticalCount, mrrExposed) {
-  if (criticalCount === 0) return 'Ningún cliente con múltiples tipos de riesgo. Cartera con condiciones de entrada saludables.'
-  const pct = Math.round((criticalCount / (wonClients.length || 1)) * 100)
-  return `${pct}% de clientes activos con múltiples tipos de riesgo — representan ${fmt(mrrExposed)}/mes. Priorizar intervención en las primeras 2 semanas.`
 }
 
 const riskBadge = (level) => {
@@ -237,7 +153,6 @@ export default function RetentionIntelligence() {
     [baseData]
   )
 
-  // [1] Health Bar
   const healthBar = useMemo(() => {
     const safe     = baseData.filter(d => d.riskLevel === 'safe')
     const warning  = baseData.filter(d => d.riskLevel === 'warning')
@@ -253,7 +168,6 @@ export default function RetentionIntelligence() {
     }
   }, [baseData])
 
-  // [2] Waterfall
   const waterfallData = useMemo(() => [
     { label: 'MRR Total',  base: 0,                                               value: healthBar.total.mrr,    fill: C.neutral },
     { label: 'Crítico',    base: 0,                                               value: healthBar.critical.mrr, fill: C.danger  },
@@ -261,7 +175,6 @@ export default function RetentionIntelligence() {
     { label: 'Safe',       base: healthBar.critical.mrr + healthBar.warning.mrr,  value: healthBar.safe.mrr,     fill: C.safe    },
   ], [healthBar])
 
-  // [3] Flags frecuencia
   const flagsFreq = useMemo(() =>
     ALL_FLAGS.map(f => ({
       flag:     FLAG_SHORT[f],
@@ -273,7 +186,6 @@ export default function RetentionIntelligence() {
     [wonClients]
   )
 
-  // [4] Urgencia distribución
   const urgencyDist = useMemo(() =>
     ['Alta', 'Media'].map(u => {
       const g = wonClients.filter(c => c.urgencia === u)
@@ -291,7 +203,6 @@ export default function RetentionIntelligence() {
     [wonClients]
   )
 
-  // [5] Canal → risk
   const canalRisk = useMemo(() => {
     const canales = [...new Set(wonClients.map(c => c.canal_descubrimiento))]
     return canales.map(canal => {
@@ -305,7 +216,6 @@ export default function RetentionIntelligence() {
     }).sort((a, b) => b.avgRisk - a.avgRisk)
   }, [wonClients])
 
-  // [6] Industria × flag heatmap
   const industriaHeatmap = useMemo(() => {
     const industries = [...new Set(wonClients.map(c => c.industria))].filter(Boolean)
     return industries.map(ind => {
@@ -323,7 +233,6 @@ export default function RetentionIntelligence() {
     }).sort((a, b) => b.avgRisk - a.avgRisk)
   }, [wonClients])
 
-  // [7] Vendedor lollipop
   const vendorRisk = useMemo(() => {
     return ['Toro', 'Puma', 'Zorro', 'Boa', 'Tiburón'].map(v => {
       const g = wonClients.filter(c => c.vendedor === v)
@@ -333,7 +242,6 @@ export default function RetentionIntelligence() {
     }).filter(Boolean).sort((a, b) => b.avgRisk - a.avgRisk)
   }, [wonClients])
 
-  // [8] MRR por flag
   const mrrByFlag = useMemo(() =>
     ALL_FLAGS.map(f => {
       const cl = wonClients.filter(c => (c.retention_risk_flags || []).includes(f))
@@ -348,7 +256,6 @@ export default function RetentionIntelligence() {
     [wonClients]
   )
 
-  // [9] Client × flag matrix
   const clientMatrix = useMemo(() => {
     const ORDER = { critical: 0, warning: 1, safe: 2 }
     return [...baseData]
@@ -360,7 +267,6 @@ export default function RetentionIntelligence() {
       })
   }, [baseData])
 
-  // [10] Playbook quads
   const playbookQuads = useMemo(() => ({
     both:     baseData.filter(d => d.activacion > 0 && d.permanencia > 0),
     techOnly: baseData.filter(d => d.activacion > 0 && d.permanencia === 0),
@@ -369,37 +275,32 @@ export default function RetentionIntelligence() {
   }), [baseData])
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-text mb-1">Onboarding Risk</h1>
+    <div className="animate-in fade-in duration-500">
+      <div className="page-title-wrap"><h1 className="text-2xl font-bold mb-1 text-text">Onboarding Risk</h1></div>
       <p className="text-sm text-text-secondary mb-6">
         Condiciones de entrada de clientes activos — ¿qué necesita cada uno para activarse?
       </p>
 
       <Filters searchQuery={searchQuery} onSearch={setSearchQuery} onClearAll={clearAll} filters={filters} onFilter={setFilter} totalFiltered={clients.length} />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 mb-2 sm:grid-cols-4">
-        <KPICard icon={Users}         title="Clientes Activos"    value={wonClients.length}      subtitle="Deals cerrados (Won)" />
-        <KPICard icon={AlertTriangle} title="Riesgo Crítico"      value={criticalClients.length} subtitle="Múltiples tipos de flag" />
-        <KPICard icon={DollarSign}    title="MRR Expuesto"        value={fmt(mrrExposed)}        subtitle="Revenue en riesgo crítico" />
-        <KPICard icon={Flame}         title="Motivación Reactiva" value={reactiveCount}          subtitle="Compraron por urgencia" />
+      <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4">
+        <KPICard icon={Users}         title="Clientes Activos"    rawValue={wonClients.length}      value={wonClients.length}      subtitle="Deals cerrados (Won)" />
+        <KPICard icon={AlertTriangle} title="Riesgo Crítico"      rawValue={criticalClients.length} value={criticalClients.length} subtitle="Múltiples tipos de flag" />
+        <KPICard icon={DollarSign}    title="MRR Expuesto"        rawValue={mrrExposed}             value={fmt(mrrExposed)}        subtitle="Revenue en riesgo crítico" />
+        <KPICard icon={Flame}         title="Motivación Reactiva" rawValue={reactiveCount}          value={reactiveCount}          subtitle="Compraron por urgencia" />
       </div>
 
-      {/* ── TABLA ── */}
-      <SectionHeader title="Detalle por Cliente" subtitle="Ordenados por nivel de riesgo — click para ver la ficha completa" />
-      <div className="bg-surface border border-border rounded-xl shadow-sm mb-4">
-        <div className="px-5 py-2 bg-brand-light border-b border-brand/10">
-          <p className="text-xs text-brand/80 leading-relaxed">⚡ {insightTable(wonClients, criticalClients.length, mrrExposed)}</p>
-        </div>
+      <SectionHeader title="Detalle por Cliente" subtitle="Ordenados por nivel de riesgo" />
+      <div className="bg-surface border border-border rounded-xl shadow-sm mb-8 overflow-hidden">
         <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 bg-bg">
+            <thead className="sticky top-0 z-10 bg-bg shadow-sm">
               <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Nombre</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Plan</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">MRR</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">Nivel</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Flags activos</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Plan</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase">MRR</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-text-secondary uppercase">Nivel</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase">Flags activos</th>
               </tr>
             </thead>
             <tbody>
@@ -418,7 +319,6 @@ export default function RetentionIntelligence() {
                         {d.flags.map((f, j) => (
                           <span key={j} className={`text-[10px] px-1.5 py-0.5 rounded border ${flagClass(f)}`}>{f}</span>
                         ))}
-                        {d.flags.length === 0 && <span className="text-[10px] text-text-muted">—</span>}
                       </div>
                     </td>
                   </tr>
@@ -429,425 +329,202 @@ export default function RetentionIntelligence() {
         </div>
       </div>
 
-      {/* Leyenda global */}
-      <div className="flex flex-wrap gap-5 mb-2 text-[11px] text-text-muted">
-        {[['safe', 'Safe — sin flags activos'], ['warning', 'En Riesgo — un tipo de flag'], ['danger', 'Crítico — múltiples tipos']].map(([k, label]) => (
-          <span key={k} className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: C[k] }} />
-            {label}
-          </span>
-        ))}
-      </div>
+      <SectionHeader title="Estado de la cartera" subtitle="Distribución de salud financiera" />
 
-      {/* ══ 1: ESTADO DE LA CARTERA ══ */}
-      <SectionHeader title="Estado de la cartera" subtitle="¿Cuántos clientes y cuánto MRR tiene cada nivel de riesgo?" />
-
-      {/* [1] Portfolio Health Bar */}
-      <div className="mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ChartCard
           title="Portfolio Health"
-          subtitle="Distribución de clientes y MRR — escala al número de clientes activos"
+          subtitle="Proporción de clientes y MRR por nivel de riesgo"
+          accentColor="#16A34A"
           insight={insightHealthBar(healthBar)}
-          methodology="Clientes Won clasificados en Safe (0 flags), En Riesgo (1 tipo de flag) y Crítico (ambos tipos o ≥3 flags). Barras proporcionales al total en cada dimensión."
+          methodology="Clasificación basada en la concurrencia de flags de riesgo."
         >
-          <div className="space-y-5 py-1">
+          <div className="space-y-6 py-1">
             {[
               {
-                label: 'Clientes', total: `${healthBar.total.count} activos`,
+                label: 'Clientes', total: healthBar.total.count,
                 segs: [
-                  { pct: healthBar.safe.cPct,     val: `${healthBar.safe.count}`,     color: 'bg-success' },
-                  { pct: healthBar.warning.cPct,  val: `${healthBar.warning.count}`,  color: 'bg-warning' },
-                  { pct: healthBar.critical.cPct, val: `${healthBar.critical.count}`, color: 'bg-danger'  },
+                  { label: 'Safe',      pct: healthBar.safe.cPct,     v: healthBar.safe.count,     color: C.safe    },
+                  { label: 'En Riesgo', pct: healthBar.warning.cPct,  v: healthBar.warning.count,  color: C.warning },
+                  { label: 'Crítico',   pct: healthBar.critical.cPct, v: healthBar.critical.count, color: C.danger  },
                 ],
               },
               {
-                label: 'MRR', total: `${fmt(healthBar.total.mrr)}/mes`,
+                label: 'MRR', total: fmt(healthBar.total.mrr),
                 segs: [
-                  { pct: healthBar.safe.mPct,     val: fmt(healthBar.safe.mrr),     color: 'bg-success' },
-                  { pct: healthBar.warning.mPct,  val: fmt(healthBar.warning.mrr),  color: 'bg-warning' },
-                  { pct: healthBar.critical.mPct, val: fmt(healthBar.critical.mrr), color: 'bg-danger'  },
+                  { label: 'Safe',      pct: healthBar.safe.mPct,     v: fmt(healthBar.safe.mrr),     color: C.safe    },
+                  { label: 'En Riesgo', pct: healthBar.warning.mPct,  v: fmt(healthBar.warning.mrr),  color: C.warning },
+                  { label: 'Crítico',   pct: healthBar.critical.mPct, v: fmt(healthBar.critical.mrr), color: C.danger  },
                 ],
               },
             ].map(row => (
               <div key={row.label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-text-secondary">{row.label}</span>
-                  <span className="text-xs text-text-muted">{row.total}</span>
+                {/* Label + total */}
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{row.label}</span>
+                  <span className="text-xs font-bold text-text tabular-nums">{row.total}</span>
                 </div>
-                <div className="flex h-8 rounded-lg overflow-hidden gap-px">
-                  {row.segs.map((seg, i) => (
-                    <div key={i} style={{ width: `${seg.pct}%` }} className={`${seg.color} flex items-center justify-center flex-shrink-0`}>
-                      {seg.pct >= 12 && <span className="text-white text-[11px] font-semibold">{seg.pct}%</span>}
+
+                {/* Barra limpia — solo % dentro */}
+                <div className="flex gap-0.5 h-7 rounded-md overflow-hidden bg-slate-100">
+                  {row.segs.map((s, i) => s.pct > 0 && (
+                    <div
+                      key={i}
+                      className="flex items-center justify-center transition-all duration-700"
+                      style={{ width: `${s.pct}%`, backgroundColor: s.color }}
+                    >
+                      {s.pct > 11 && (
+                        <span className="text-white text-[10px] font-bold">{s.pct}%</span>
+                      )}
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between mt-1 text-[10px]">
-                  <span className="text-success font-medium">Safe: {row.segs[0].val}</span>
-                  <span className="text-warning font-medium">En Riesgo: {row.segs[1].val}</span>
-                  <span className="text-danger font-medium">Crítico: {row.segs[2].val}</span>
+
+                {/* Stats por segmento debajo */}
+                <div className="flex gap-4 mt-2">
+                  {row.segs.map((s, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                      <span className="text-[11px] text-text-secondary">{s.label}</span>
+                      <span className="text-[11px] font-bold text-text tabular-nums">{s.v}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </ChartCard>
-      </div>
 
-      {/* [2] Waterfall MRR */}
-      <div className="mb-4">
         <ChartCard
-          title="Desglose de MRR por Nivel de Riesgo"
-          subtitle="¿Cuánto revenue está expuesto en cada categoría?"
-          insight={insightWaterfall(healthBar.critical.mrr, healthBar.total.mrr)}
-          methodology="MRR (ACV/12) de clientes Won agrupado por nivel de riesgo. Crítico parte desde 0; En Riesgo se apoya sobre Crítico; Safe completa el total."
-        >
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={waterfallData} layout="vertical" barSize={36} margin={{ top: 0, right: 90, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis type="category" dataKey="label" tick={{ fontSize: 12, fill: '#475569' }} width={90} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = waterfallData.find(r => r.label === label)
-                return <TBox lines={[label, `${fmt(d?.value || 0)}/mes`]} />
-              }} />
-              <Bar dataKey="base"  stackId="wf" fillOpacity={0} strokeWidth={0} legendType="none" isAnimationActive={false} />
-              <Bar dataKey="value" stackId="wf" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                {waterfallData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                <LabelList dataKey="value" position="right" formatter={v => fmt(v)} style={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      {/* ══ 2: NATURALEZA DEL RIESGO ══ */}
-      <SectionHeader title="Naturaleza del riesgo" subtitle="¿Qué tipo de fricción domina y quién llega con más riesgo?" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* [3] Frecuencia de flags */}
-        <ChartCard
-          title="Frecuencia de Flags*"
-          subtitle="¿Cuál es el problema de activación más frecuente?"
+          title="Frecuencia de Flags"
+          subtitle="Tipos de fricción más comunes en el onboarding"
+          accentColor="#DC2626"
           isAI
-          insight={insightFlagsFreq(flagsFreq)}
-          methodology="% de clientes Won con cada flag activo. Ámbar = flag de activación (técnico). Rojo = flag de permanencia (relacional)."
+          insight="Los flags de activación técnica dominan el volumen, mientras que los relacionales amenazan la permanencia."
+          methodology="Frecuencia absoluta de flags en la cartera Won."
         >
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={flagsFreq} layout="vertical" barSize={22} margin={{ top: 0, right: 48, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#64748B' }} allowDecimals={false} />
-              <YAxis type="category" dataKey="flag" tick={{ fontSize: 11, fill: '#475569' }} width={112} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = flagsFreq.find(f => f.flag === label)
-                return <TBox lines={[d?.fullFlag || label, `${d?.count} clientes (${d?.pct}%)`, d?.type === 'activacion' ? 'Flag de activación' : 'Flag de permanencia']} />
-              }} />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                {flagsFreq.map((d, i) => <Cell key={i} fill={d.type === 'activacion' ? C.warning : C.danger} />)}
-                <LabelList dataKey="pct" position="right" formatter={v => `${v}%`} style={{ fontSize: 11, fill: '#64748B' }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* [4] Urgencia → distribución */}
-        <ChartCard
-          title="Urgencia → Nivel de Riesgo*"
-          subtitle="Clientes con urgencia Alta llegan con mayor riesgo de activación"
-          isAI
-          insight={insightUrgency(urgencyDist)}
-          methodology="Clientes Won agrupados por urgencia declarada, subdivididos por nivel de riesgo. Muestra si urgencia como trigger de compra genera condiciones de entrada más complejas."
-        >
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={urgencyDist} barSize={72} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-              <XAxis dataKey="urgencia" tick={{ fontSize: 12, fill: '#475569' }} tickFormatter={v => { const d = urgencyDist.find(x => x.urgencia === v); return `${v} (n=${d?.n})` }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} unit="%" domain={[0, 100]} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                return (
-                  <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-md text-sm">
-                    <p className="font-medium text-text mb-1">{label}</p>
-                    {payload.map((p, i) => p.value > 0 && (
-                      <p key={i} className="text-text-secondary">{p.name}: {p.value}%</p>
-                    ))}
-                  </div>
-                )
-              }} />
-              <Bar dataKey="Safe"       name="Safe"       stackId="a" fill={C.safe} />
-              <Bar dataKey="En Riesgo"  name="En Riesgo"  stackId="a" fill={C.warning} />
-              <Bar dataKey="Crítico"    name="Crítico"    stackId="a" fill={C.danger} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      {/* ══ 3: ORIGEN DEL RIESGO ══ */}
-      <SectionHeader title="Origen del riesgo" subtitle="¿El canal de adquisición y el vendedor predicen el perfil de onboarding?" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* [5] Canal → risk */}
-        <ChartCard
-          title="Canal de Adquisición → Risk"
-          subtitle="¿De dónde vienen los clientes con mayor fricción de entrada?"
-          insight={insightCanal(canalRisk)}
-          methodology="Risk score promedio (0-4) de clientes Won por canal de origen. Score alto = mayor probabilidad de necesitar intervención durante el onboarding."
-        >
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={canalRisk} layout="vertical" barSize={20} margin={{ top: 0, right: 48, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tick={{ fontSize: 11, fill: '#64748B' }} allowDecimals={false} />
-              <YAxis type="category" dataKey="canal" tick={{ fontSize: 11, fill: '#475569' }} width={88} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = canalRisk.find(c => c.canal === label)
-                return <TBox lines={[label, `Risk promedio: ${d?.avgRisk}/4`, `${d?.count} cliente${d?.count !== 1 ? 's' : ''}`]} />
-              }} />
-              <Bar dataKey="avgRisk" radius={[0, 4, 4, 0]}>
-                {canalRisk.map((d, i) => <Cell key={i} fill={riskColorByValue(d.avgRisk)} />)}
-                <LabelList dataKey="avgRisk" position="right" style={{ fontSize: 11, fill: '#64748B' }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* [7] Vendedor lollipop */}
-        <ChartCard
-          title="Risk Promedio por Vendedor"
-          subtitle="¿Cada vendedor cierra deals con distinto perfil de riesgo?"
-          insight={insightVendedor(vendorRisk)}
-          methodology="Risk score promedio de clientes Won por vendedor. No indica calidad del vendedor — puede reflejar que cada uno trabaja segmentos con distinta complejidad técnica."
-        >
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={vendorRisk} layout="vertical" barSize={20} margin={{ top: 0, right: 48, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tick={{ fontSize: 11, fill: '#64748B' }} allowDecimals={false} />
-              <YAxis type="category" dataKey="vendedor" tick={{ fontSize: 12, fill: '#475569' }} width={68} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = vendorRisk.find(v => v.vendedor === label)
-                return <TBox lines={[label, `Risk promedio: ${d?.avgRisk}/4`, `${d?.count} clientes Won`]} />
-              }} />
-              <Bar dataKey="avgRisk" shape={<LollipopBar />}>
-                {vendorRisk.map((d, i) => <Cell key={i} fill={d.color} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      {/* ══ 4: CONCENTRACIÓN POR SEGMENTO ══ */}
-      <SectionHeader title="Concentración por segmento" subtitle="¿Qué industrias concentran más flags? CS ajusta el protocolo por vertical." />
-
-      {/* [6] Heatmap industria × flag */}
-      <div className="mb-4">
-        <ChartCard
-          title="Heatmap Industria × Flag*"
-          subtitle="Intensidad = % de clientes de esa industria con ese flag activo — ordenado por riesgo promedio"
-          isAI
-          insight={insightIndustria(industriaHeatmap)}
-          methodology="Para cada industria, % de clientes Won que tienen cada flag. Color más intenso = mayor concentración de riesgo en esa vertical."
-        >
-          <div className="overflow-x-auto mt-2">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left text-xs font-semibold text-text-secondary py-2 pr-4 whitespace-nowrap">Industria</th>
-                  <th className="text-center text-xs font-semibold text-text-secondary py-2 px-2 whitespace-nowrap">n</th>
-                  <th className="text-center text-xs font-semibold text-text-secondary py-2 px-2 whitespace-nowrap">Risk</th>
-                  {ALL_FLAGS.map(f => (
-                    <th key={f} className="text-center text-[10px] font-semibold text-text-secondary py-2 px-3 whitespace-nowrap">{FLAG_SHORT[f]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {industriaHeatmap.map((row, i) => (
-                  <tr key={i} className="border-t border-border/40">
-                    <td className="text-xs font-medium text-text py-2.5 pr-4 whitespace-nowrap">{row.ind}</td>
-                    <td className="text-center text-[11px] text-text-muted py-2.5 px-2">{row.total}</td>
-                    <td className="text-center text-[11px] py-2.5 px-2">
-                      <span className={`font-medium ${row.avgRisk >= 2 ? 'text-danger' : row.avgRisk >= 1 ? 'text-warning' : 'text-success'}`}>{row.avgRisk}</span>
-                    </td>
-                    {row.flags.map((cell, j) => {
-                      const { bg, text } = heatColor(cell.pct)
-                      return (
-                        <td key={j} className={`text-center text-[11px] py-2.5 px-3 ${bg} ${text}`} title={`${cell.flag}: ${cell.count}/${row.total} (${cell.pct}%)`}>
-                          {cell.pct > 0 ? `${cell.pct}%` : '—'}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-[210px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={flagsFreq} layout="vertical" margin={{ right: 40 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="flag" tick={{ fontSize: 11 }} width={110} />
+                <Tooltip />
+                <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
+                  {flagsFreq.map((d, i) => <Cell key={i} fill={d.type === 'activacion' ? C.warning : C.danger} />)}
+                  <LabelList dataKey="pct" position="right" formatter={v => `${v}%`} style={{ fontSize: 11 }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </ChartCard>
       </div>
 
-      {/* ══ 5: IMPACTO FINANCIERO ══ */}
-      <SectionHeader title="Impacto financiero" subtitle="¿Cuánto MRR está expuesto por cada tipo de riesgo?" />
+      <SectionHeader title="Análisis Profundo" subtitle="Origen y patrones de riesgo" />
 
-      {/* [8] MRR por flag */}
-      <div className="mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ChartCard
-          title="MRR Expuesto por Flag*"
-          subtitle="Suma de MRR de clientes con cada flag activo — prioriza por impacto económico, no solo frecuencia"
-          isAI
-          insight={insightMrrByFlag(mrrByFlag)}
-          methodology="Suma del MRR estimado de todos los clientes Won que tienen activo ese flag. Un cliente puede contribuir a múltiples flags. Prioriza qué fricción resolver primero según impacto en revenue."
+          title="Canal → Risk Score"
+          subtitle="Promedio de riesgo por fuente de adquisición"
+          accentColor="#F59E0B"
+          insight="Ciertos canales atraen leads con mayor complejidad de implementación."
+          methodology="Promedio de retention_risk_score por canal."
         >
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={mrrByFlag} layout="vertical" barSize={22} margin={{ top: 0, right: 90, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-              <XAxis type="number" tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis type="category" dataKey="flag" tick={{ fontSize: 11, fill: '#475569' }} width={112} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = mrrByFlag.find(f => f.flag === label)
-                return <TBox lines={[d?.fullFlag || label, `${fmt(d?.mrr || 0)}/mes expuesto`, `${d?.count} clientes`]} />
-              }} />
-              <Bar dataKey="mrr" radius={[0, 4, 4, 0]}>
-                {mrrByFlag.map((d, i) => <Cell key={i} fill={d.type === 'activacion' ? C.warning : C.danger} />)}
-                <LabelList dataKey="mrr" position="right" formatter={v => fmt(v)} style={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={canalRisk} layout="vertical" margin={{ right: 40 }}>
+                <XAxis type="number" domain={[0, 4]} hide />
+                <YAxis type="category" dataKey="canal" tick={{ fontSize: 11 }} width={100} />
+                <Bar dataKey="avgRisk" radius={[0, 4, 4, 0]}>
+                  {canalRisk.map((d, i) => <Cell key={i} fill={riskColorByValue(d.avgRisk)} />)}
+                  <LabelList dataKey="avgRisk" position="right" style={{ fontSize: 11 }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
-      </div>
 
-      {/* ══ 6: MAPA COMPLETO ══ */}
-      <SectionHeader title="Mapa completo de la cartera" subtitle="Cada cliente × cada flag. Ordenado de crítico a safe. Click en nombre para ver ficha." />
-
-      {/* [9] Client × flag matrix */}
-      <div className="mb-4">
         <ChartCard
-          title="Mapa Cliente × Flag*"
-          subtitle="Ámbar = flag de activación · Rojo = flag de permanencia · Click en cliente para ver ficha"
-          isAI
-          insight={`${clientMatrix.filter(d => d.riskLevel === 'critical').length} clientes críticos (izq) → ${clientMatrix.filter(d => d.riskLevel === 'warning').length} en riesgo → ${clientMatrix.filter(d => d.riskLevel === 'safe').length} safe (der). Patrón de co-ocurrencia visible de un vistazo.`}
-          methodology="Tabla completa de clientes Won × 5 flags. Celda coloreada = flag activo. Clientes ordenados por nivel de riesgo: crítico → en riesgo → safe."
+          title="Vendedor → Perfil de Riesgo"
+          subtitle="Riesgo promedio de los cierres por ejecutivo"
+          accentColor="#64748B"
+          methodology="Señal de alineación entre ventas y CS."
         >
-          <div className="overflow-x-auto -mx-1 mt-2">
-            <table className="text-[10px] border-collapse" style={{ minWidth: `${clientMatrix.length * 36 + 120}px` }}>
-              <thead>
-                <tr>
-                  <th className="sticky left-0 bg-surface z-10 text-left text-[10px] font-semibold text-text-secondary pb-1 pr-3 min-w-[112px]" />
-                  {clientMatrix.map((d, i) => (
-                    <th key={i} className="text-center px-0.5 pb-1 cursor-pointer" onClick={() => setSelectedClient(d._raw)} title={d.nombre}>
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: riskColor(d.riskLevel) }} />
-                        <span className="text-text-muted font-normal" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '9px', lineHeight: 1.1 }}>
-                          {d.nombre}
-                        </span>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {ALL_FLAGS.map((flag, fi) => (
-                  <tr key={fi} className={fi % 2 === 0 ? 'bg-bg/50' : ''}>
-                    <td className="sticky left-0 bg-surface z-10 text-[10px] font-medium text-text-secondary py-2 pr-3 whitespace-nowrap">
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle`} style={{ backgroundColor: ACTIVATION_FLAGS.has(flag) ? C.warning : C.danger }} />
-                      {FLAG_SHORT[flag]}
-                    </td>
-                    {clientMatrix.map((d, ci) => (
-                      <td key={ci} className="text-center py-1.5 px-0.5 cursor-pointer" onClick={() => setSelectedClient(d._raw)} title={`${d.nombre}: ${flag} ${d.flagsActive[fi] ? '✓' : '—'}`}>
-                        <span
-                          className="inline-block w-4 h-4 rounded-sm"
-                          style={{
-                            backgroundColor: d.flagsActive[fi]
-                              ? (ACTIVATION_FLAGS.has(flag) ? '#FEF3C7' : '#FEE2E2')
-                              : '#F1F5F9',
-                            border: d.flagsActive[fi]
-                              ? `1.5px solid ${ACTIVATION_FLAGS.has(flag) ? C.warning : C.danger}`
-                              : '1.5px solid #E2E8F0',
-                          }}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={vendorRisk} layout="vertical" margin={{ right: 40 }}>
+                <XAxis type="number" domain={[0, 4]} hide />
+                <YAxis type="category" dataKey="vendedor" tick={{ fontSize: 12 }} width={80} />
+                <Bar dataKey="avgRisk" shape={<LollipopBar />}>
+                  {vendorRisk.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </ChartCard>
       </div>
 
-      {/* ══ 7: ACCIÓN ══ */}
-      <SectionHeader title="Playbook de Acción" subtitle="¿Qué equipo atiende a cada cliente? Basado en el tipo de riesgo detectado. Click en nombre para ver ficha." />
+      <SectionHeader title="Playbook de Acción" subtitle="Asignación de recursos por tipo de riesgo" />
 
-      {/* [10] Playbook 2×2 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          {
-            key: 'both', icon: '🚨',
-            title: 'CS + Soporte · Crítico',
-            desc:  'Fricción técnica Y relacional — intervención conjunta urgente',
-            borderCls: 'border-danger/30', bgCls: 'bg-danger-light',
-            titleCls:  'text-danger',
-            chipBorder: 'border-danger/30', chipText: 'text-danger',
-          },
-          {
-            key: 'techOnly', icon: '🔧',
-            title: 'Soporte Técnico',
-            desc:  'Solo fricción de activación — quieren quedarse, necesitan ayuda técnica',
-            borderCls: 'border-warning/30', bgCls: 'bg-warning-light',
-            titleCls:  'text-amber-800',
-            chipBorder: 'border-warning/40', chipText: 'text-amber-800',
-          },
-          {
-            key: 'csOnly', icon: '🤝',
-            title: 'Customer Success',
-            desc:  'Solo fricción relacional — check-ins semanales, construir hábito',
-            borderCls: 'border-brand/20', bgCls: 'bg-brand-light',
-            titleCls:  'text-brand',
-            chipBorder: 'border-brand/30', chipText: 'text-brand',
-          },
-          {
-            key: 'safe', icon: '✅',
-            title: 'Monitorear',
-            desc:  'Sin fricción detectada — onboarding estándar + check-in a 30 días',
-            borderCls: 'border-success/20', bgCls: 'bg-success-light',
-            titleCls:  'text-success',
-            chipBorder: 'border-success/30', chipText: 'text-success',
-          },
+          { key: 'both', icon: '🚨', title: 'Crisis / VIP', c: '#DC2626', bg: 'bg-red-50' },
+          { key: 'techOnly', icon: '🔧', title: 'Tech Support', c: '#F59E0B', bg: 'bg-amber-50' },
+          { key: 'csOnly', icon: '🤝', title: 'CS High Touch', c: '#2563EB', bg: 'bg-blue-50' },
+          { key: 'safe', icon: '✅', title: 'Standard', c: '#16A34A', bg: 'bg-green-50' }
         ].map(q => (
-          <div key={q.key} className={`border-2 ${q.borderCls} rounded-xl p-4 ${q.bgCls}`}>
-            <div className="flex items-start gap-2 mb-3">
-              <span className="text-xl leading-none mt-0.5">{q.icon}</span>
-              <div>
-                <p className={`text-sm font-bold ${q.titleCls}`}>{q.title}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">{q.desc}</p>
+          <div key={q.key} className="rounded-xl p-5 border border-border bg-surface shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: q.c }} />
+                <h3 className="font-bold text-sm text-text">{q.title}</h3>
               </div>
-              <span className="ml-auto text-xs font-bold text-text-muted">{playbookQuads[q.key].length}</span>
+              <span className="text-xl font-bold tabular-nums" style={{ color: q.c }}>{playbookQuads[q.key].length}</span>
             </div>
+            <div className="text-lg mb-3">{q.icon}</div>
             <div className="flex flex-wrap gap-1.5">
-              {playbookQuads[q.key].map((d, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedClient(d._raw)}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border ${q.chipBorder} bg-surface ${q.chipText} font-medium hover:opacity-80 transition-opacity`}
-                >
-                  {d.nombre}
+              {playbookQuads[q.key].slice(0, 5).map((d, i) => (
+                <button key={i} onClick={() => setSelectedClient(d._raw)} className="text-[10px] px-2 py-0.5 rounded-full border border-border hover:bg-bg transition-colors">
+                  {d.nombre.split(' ')[0]}
                 </button>
               ))}
-              {playbookQuads[q.key].length === 0 && (
-                <span className="text-[11px] text-text-muted italic">Sin clientes en esta zona</span>
-              )}
+              {playbookQuads[q.key].length > 5 && <span className="text-[10px] text-text-muted">+{playbookQuads[q.key].length - 5} más</span>}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Nota de producción */}
-      <div className="mb-4 px-4 py-3 bg-bg border border-border rounded-lg">
-        <p className="text-[11px] text-text-muted leading-relaxed">
-          <span className="font-semibold text-text-secondary">Nota:</span> Este módulo mapea condiciones de entrada desde transcripciones de venta. En producción se enriquecería con datos de uso del producto, tickets de soporte y NPS para evolucionar a predicción real de churn. * Variable derivada con IA.
-        </p>
-      </div>
-
       {selectedClient && <ClientDetail client={selectedClient} onClose={() => setSelectedClient(null)} />}
+
+      <AccionesRecomendadas acciones={[
+        {
+          prioridad: 'ALTA', tema: 'Riesgo crítico', icon: '🚨', titulo: `Activar protocolo de retención — ${playbookQuads.both.length} clientes en crisis`,
+          texto: playbookQuads.both.length > 0
+            ? `${playbookQuads.both.map(d => d.nombre.split(' ')[0]).slice(0,3).join(', ')}${playbookQuads.both.length > 3 ? ` y ${playbookQuads.both.length - 3} más` : ''} tienen riesgo de churn alto. Asignar CS dedicado esta semana.`
+            : 'Sin clientes en estado crítico. Mantener monitoreo semanal para detectar señales tempranas.',
+        },
+        {
+          prioridad: 'ALTA', tema: 'Onboarding', icon: '⚡', titulo: 'Acelerar activación en los primeros 30 días',
+          texto: `${playbookQuads.techOnly.length} clientes necesitan soporte técnico de onboarding. El tiempo de activación es el predictor #1 de retención a 6 meses.`,
+        },
+        {
+          prioridad: 'MEDIA', tema: 'CS', icon: '🤝', titulo: `${playbookQuads.csOnly.length} clientes requieren alto contacto de CS`,
+          texto: playbookQuads.csOnly.length > 0
+            ? `Estos clientes tienen señales de necesidad de acompañamiento pero bajo riesgo técnico. Programar check-ins quincenales para detectar fricción temprana.`
+            : 'Base de clientes sana en el frente de CS. Aprovechar para solicitar casos de éxito y testimonios.',
+        },
+        {
+          prioridad: 'MEDIA', tema: 'Expansión', icon: '📈', titulo: `${playbookQuads.safe.length} clientes en estado safe — oportunidad de upsell`,
+          texto: `Los clientes con riesgo bajo son el mejor momento para introducir expansión de plan. Definir un trigger de upsell a los 60 días post-activación.`,
+        },
+        {
+          prioridad: 'BAJA', tema: 'Proceso', icon: '📋', titulo: 'Documentar los flags de riesgo más frecuentes',
+          texto: `Identificar los patrones de riesgo que se repiten e incorporarlos al proceso de calificación pre-venta para evitar onboardings complicados desde el inicio.`,
+        },
+        {
+          prioridad: 'BAJA', tema: 'Data', icon: '📊', titulo: 'Cerrar brechas de información en el onboarding',
+          texto: `Algunos clientes no tienen datos completos de activación. Agregar campos de seguimiento en el CRM para mejorar la precisión del scoring de riesgo.`,
+        },
+      ]} />
     </div>
   )
 }

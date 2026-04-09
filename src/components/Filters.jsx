@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, X, SlidersHorizontal, Check, Plus, ChevronDown } from 'lucide-react'
+import { Search, X, SlidersHorizontal, Check, Plus, ChevronDown, Filter } from 'lucide-react'
 import allClients from '../data/clients'
 
 function uniqueValues(key) {
@@ -52,46 +52,48 @@ function MultiSelect({ filter, selected, onToggle, onClear }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`h-8 pl-3 pr-2 border rounded-lg text-xs flex items-center gap-1.5 transition-colors outline-none
+        className={`h-9 pl-4 pr-3 border rounded-full text-xs flex items-center gap-2 transition-all duration-300 outline-none shadow-sm
           ${hasValue
-            ? 'border-brand text-brand font-medium bg-brand-light'
-            : 'border-border text-text-secondary bg-bg hover:border-brand/50'
+            ? 'border-brand text-brand font-bold bg-brand/5 ring-1 ring-brand/10'
+            : 'border-border text-text-secondary bg-surface hover:border-brand/40 hover:bg-slate-50'
           }`}
       >
-        <span>{filter.label}</span>
+        <span className="tracking-wide">{filter.label}</span>
         {hasValue && (
-          <span className="bg-brand text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+          <span className="bg-brand text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-md animate-in zoom-in-50">
             {selected.length}
           </span>
         )}
-        <ChevronDown size={11} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={11} className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-50 min-w-[170px] py-1">
-          {options.map(o => {
-            const checked = selected.includes(o.value)
-            return (
-              <button
-                key={o.value}
-                onClick={() => onToggle(filter.key, o.value)}
-                className="w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 hover:bg-hover transition-colors"
-              >
-                <span className={`w-3.5 h-3.5 border rounded flex-shrink-0 flex items-center justify-center transition-colors
-                  ${checked ? 'bg-brand border-brand' : 'border-border'}`}>
-                  {checked && <Check size={9} className="text-white" strokeWidth={3} />}
-                </span>
-                <span className={checked ? 'text-text font-medium' : 'text-text-secondary'}>{o.label}</span>
-              </button>
-            )
-          })}
+        <div className="absolute top-full left-0 mt-2 bg-surface/90 backdrop-blur-md border border-border/60 rounded-xl shadow-xl z-[200] min-w-[200px] py-2 animate-in fade-in slide-in-from-top-2 overflow-hidden">
+          <div className="max-h-60 overflow-y-auto px-1">
+            {options.map(o => {
+              const checked = selected.includes(o.value)
+              return (
+                <button
+                  key={o.value}
+                  onClick={() => onToggle(filter.key, o.value)}
+                  className="w-full text-left px-3 py-2.5 text-[13px] flex items-center gap-3 hover:bg-brand/5 rounded-lg transition-colors group"
+                >
+                  <span className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center transition-all duration-200
+                    ${checked ? 'bg-brand border-brand shadow-sm scale-110' : 'border-slate-300 group-hover:border-brand'}`}>
+                    {checked && <Check size={10} className="text-white" strokeWidth={3} />}
+                  </span>
+                  <span className={checked ? 'text-text font-semibold' : 'text-text-secondary'}>{o.label}</span>
+                </button>
+              )
+            })}
+          </div>
           {hasValue && (
-            <div className="border-t border-border mt-1 pt-1">
+            <div className="border-t border-border/40 mt-2 pt-1 px-1">
               <button
                 onClick={() => { onClear(filter.key); setOpen(false) }}
-                className="w-full text-left px-3 py-1.5 text-xs text-danger hover:bg-danger-light transition-colors"
+                className="w-full text-center px-3 py-2 text-[11px] font-bold text-danger hover:bg-danger-light rounded-lg transition-colors uppercase tracking-widest"
               >
-                Limpiar filtro
+                Limpiar Filtro
               </button>
             </div>
           )}
@@ -112,34 +114,38 @@ function FilterSelector({ visibleKeys, onToggle }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="h-9 px-3 border border-dashed border-border rounded-lg text-sm text-text-muted hover:border-brand hover:text-brand transition-colors flex items-center gap-1.5"
+        className="h-10 px-4 border border-dashed border-slate-300 rounded-xl text-sm font-semibold text-text-secondary hover:border-brand hover:text-brand hover:bg-brand/5 transition-all duration-300 flex items-center gap-2 group"
       >
-        <SlidersHorizontal size={14} />
+        <SlidersHorizontal size={15} className="group-hover:rotate-12 transition-transform" />
         Filtros
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-50 w-52 py-1">
-          <div className="px-3 py-2 border-b border-border mb-1">
-            <p className="text-xs font-medium text-text">Filtros visibles</p>
-            <p className="text-[11px] text-text-muted">Máx {MAX_VISIBLE} a la vez</p>
+        <div className="absolute top-full right-0 mt-2 bg-surface/90 backdrop-blur-md border border-border/60 rounded-xl shadow-xl z-[200] w-60 py-2 animate-in fade-in slide-in-from-top-2 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 mb-2">
+            <p className="text-xs font-bold text-text uppercase tracking-widest">Personalizar</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Visibles: {visibleKeys.length} / {MAX_VISIBLE}</p>
           </div>
-          {ALL_FILTERS.map(f => {
-            const active = visibleKeys.includes(f.key)
-            const disabled = !active && atMax
-            return (
-              <button
-                key={f.key}
-                onClick={() => { if (!disabled) onToggle(f.key) }}
-                disabled={disabled}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors
-                  ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-hover cursor-pointer'}
-                  ${active ? 'text-brand font-medium' : 'text-text-secondary'}`}
-              >
-                {f.label}
-                {active ? <Check size={13} className="text-brand" /> : <Plus size={13} className="text-text-muted" />}
-              </button>
-            )
-          })}
+          <div className="max-h-72 overflow-y-auto px-1">
+            {ALL_FILTERS.map(f => {
+              const active = visibleKeys.includes(f.key)
+              const disabled = !active && atMax
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => { if (!disabled) onToggle(f.key) }}
+                  disabled={disabled}
+                  className={`w-full text-left px-3 py-2.5 text-[13px] flex items-center justify-between transition-all rounded-lg
+                    ${disabled ? 'opacity-30 cursor-not-allowed grayscale' : 'hover:bg-brand/5 cursor-pointer'}
+                    ${active ? 'text-brand font-bold bg-brand/[0.03]' : 'text-text-secondary'}`}
+                >
+                  <span className="flex items-center gap-2">
+                    {active ? <Check size={14} className="text-brand" /> : <Plus size={14} className="text-slate-400" />}
+                    {f.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -169,7 +175,6 @@ export default function Filters({ searchQuery, onSearch, filters, onFilter, onCl
 
   const visibleFilters = ALL_FILTERS.filter(f => visibleKeys.includes(f.key))
 
-  // Chips: un chip por cada valor activo en cualquier filtro
   const activeChips = ALL_FILTERS.flatMap(f =>
     (filters[f.key] || []).map(v => ({
       id: `${f.key}:${v}`,
@@ -182,61 +187,67 @@ export default function Filters({ searchQuery, onSearch, filters, onFilter, onCl
   const activeCount = (hasSearch ? 1 : 0) + activeChips.length
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-4 mb-6 shadow-sm">
-      <div className="flex items-center gap-3">
-        {/* Buscador */}
-        <div ref={searchRef} className="relative flex-1 min-w-[200px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+    <div className="bg-surface/50 backdrop-blur-sm border border-border rounded-2xl p-5 mb-8 shadow-sm relative z-10">
+      <div className="flex items-center gap-4">
+        {/* Buscador Premium */}
+        <div ref={searchRef} className="relative flex-1 min-w-[240px] group">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-brand transition-colors" />
           <input
             type="text"
-            placeholder="Buscar por nombre, industria, vendedor, canal..."
+            placeholder="Analizar por nombre, industria o vendedor..."
             value={searchQuery}
             onChange={e => { onSearch(e.target.value); setShowSuggestions(true) }}
             onFocus={() => { if (searchQuery) setShowSuggestions(true) }}
-            className="w-full h-9 pl-9 pr-8 border border-border rounded-lg text-sm focus:border-brand focus:ring-2 focus:ring-brand-soft outline-none"
+            className="w-full h-10 pl-11 pr-10 border border-slate-200 bg-surface rounded-xl text-[13px] font-medium placeholder:text-text-muted hover:border-slate-300 focus:border-brand focus:ring-4 focus:ring-brand/5 transition-all outline-none"
           />
           {searchQuery && (
-            <button onClick={() => { onSearch(''); setShowSuggestions(false) }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
-              <X size={14} />
+            <button onClick={() => { onSearch(''); setShowSuggestions(false) }} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-danger transition-colors">
+              <X size={16} />
             </button>
           )}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 w-full mt-1 bg-surface border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-              {suggestions.map(c => (
-                <button
-                  key={c.nombre}
-                  onClick={() => { onSearch(c.nombre); setShowSuggestions(false) }}
-                  className="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover transition-colors"
-                >
-                  <span className="text-text font-medium">{c.nombre}</span>
-                  <span className="text-xs text-text-muted">{c.industria} · {c.vendedor}</span>
-                </button>
-              ))}
+            <div className="absolute top-full left-0 w-full mt-2 bg-surface border border-border/60 rounded-xl shadow-2xl z-50 max-h-72 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="py-1 max-h-72 overflow-y-auto">
+                {suggestions.map(c => (
+                  <button
+                    key={c.nombre}
+                    onClick={() => { onSearch(c.nombre); setShowSuggestions(false) }}
+                    className="w-full text-left px-4 py-3 text-sm flex items-center justify-between hover:bg-brand/[0.03] transition-colors border-b last:border-b-0 border-slate-50"
+                  >
+                    <div>
+                      <span className="text-text font-bold block leading-tight">{c.nombre}</span>
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">{c.industria}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-text-secondary bg-slate-100 px-2 py-1 rounded-lg">{c.vendedor}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         <FilterSelector visibleKeys={visibleKeys} onToggle={toggleKey} />
 
-        <span className="text-xs text-text-muted whitespace-nowrap">
-          {totalFiltered} de {allClients.length}
-          {activeCount > 0 && <span className="ml-1 text-brand">· {activeCount} activo{activeCount > 1 ? 's' : ''}</span>}
-        </span>
-
-        {activeCount > 0 && (
-          <button
-            onClick={() => { onClearAll(); setVisibleKeys(DEFAULT_VISIBLE) }}
-            className="h-9 px-3 text-sm text-danger hover:bg-danger-light rounded-lg transition-colors whitespace-nowrap flex items-center gap-1"
-          >
-            <X size={13} />
-            Limpiar
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-px bg-border/60 hidden sm:block" />
+          <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider whitespace-nowrap hidden lg:block">
+            {totalFiltered} Clientes <span className="opacity-40">/</span> {allClients.length}
+          </span>
+          {activeCount > 0 && (
+            <button
+              onClick={() => { onClearAll(); setVisibleKeys(DEFAULT_VISIBLE) }}
+              className="h-10 px-4 text-xs font-bold text-danger hover:bg-danger-light border border-danger/10 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 group shadow-sm bg-surface"
+            >
+              <X size={14} className="group-hover:rotate-90 transition-transform" />
+              Limpiar
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Multi-select dropdowns */}
+      {/* Dropdown Filters with Animation */}
       {visibleFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2.5 mt-5 animate-in fade-in slide-in-from-top-1">
           {visibleFilters.map(f => (
             <MultiSelect
               key={f.key}
@@ -249,19 +260,31 @@ export default function Filters({ searchQuery, onSearch, filters, onFilter, onCl
         </div>
       )}
 
-      {/* Chips de valores activos */}
+      {/* Active Filter Chips */}
       {(hasSearch || activeChips.length > 0) && (
-        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
+        <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-border/50">
           {hasSearch && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-brand-light text-brand">
+            <span className="inline-flex items-center gap-2 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-brand text-white shadow-sm animate-in zoom-in-95">
+              <Search size={10} strokeWidth={3} />
               "{searchQuery}"
-              <button onClick={() => onSearch('')}><X size={11} /></button>
+              <button 
+                onClick={() => onSearch('')}
+                className="hover:bg-white/20 p-0.5 rounded transition-colors"
+               >
+                <X size={12} strokeWidth={3} />
+              </button>
             </span>
           )}
           {activeChips.map(chip => (
-            <span key={chip.id} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-brand-light text-brand">
+            <span key={chip.id} className="inline-flex items-center gap-2 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-surface border border-brand/20 text-brand shadow-sm animate-in zoom-in-95 transition-all hover:border-brand/40">
+              <Filter size={10} strokeWidth={3} />
               {chip.label}
-              <button onClick={chip.onRemove}><X size={11} /></button>
+              <button 
+                onClick={chip.onRemove}
+                className="hover:bg-brand/10 p-0.5 rounded transition-colors"
+               >
+                <X size={12} strokeWidth={3} />
+              </button>
             </span>
           ))}
         </div>

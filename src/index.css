@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=Syne:wght@700;800&display=swap');
 
 @theme {
   --color-bg: #F8FAFC;
@@ -24,9 +25,145 @@
   --color-info: #0EA5E9;
 }
 
+/* ── Base ───────────────────────────────── */
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--color-bg);
+  background-image: radial-gradient(circle, #CBD5E1 1px, transparent 1px);
+  background-size: 28px 28px;
   color: var(--color-text);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── Scrollbar premium (thin & sutil) ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── Input / Select focus glow ─────────── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ── Background micro-textura ────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px;
+}
+
+/* ── Tab content fade-in con blur ───────── */
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); filter: blur(3px); }
+  to   { opacity: 1; transform: translateY(0);   filter: blur(0); }
+}
+.tab-content {
+  animation: tabFadeIn 0.22s ease both;
+}
+
+/* ── Badge Won: pulso verde ──────────────── */
+@keyframes wonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.25); }
+  50%       { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); }
+}
+.badge-won {
+  animation: wonPulse 2.8s ease infinite;
+}
+
+/* ── Win-moment: KPI count-up feel ─────── */
+@keyframes numberPop {
+  0%   { transform: scale(0.92); opacity: 0.4; }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.kpi-value {
+  animation: numberPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  font-family: 'DM Mono', 'Fira Mono', monospace;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+/* ── Badge crítico: pulso sutil ─────────── */
+@keyframes criticalPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.2); }
+  50%       { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+.badge-critical {
+  animation: criticalPulse 2.4s ease infinite;
+}
+
+/* ── Table row hover (Zeigarnik indicator) */
+.data-row {
+  transition: background 0.12s ease, border-left-color 0.12s ease;
+  border-left: 3px solid transparent;
+}
+.data-row:hover {
+  background: #F5F8FF;
+  border-left-color: var(--color-brand);
+  cursor: pointer;
+}
+
+/* ── Modal: overlay fade + panel slide from right ── */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateX(48px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Skeleton shimmer ────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E8EEF5 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+/* ── Page title hover indicator ─────────── */
+.page-title-wrap {
+  position: relative;
+  display: inline-block;
+}
+.page-title-wrap::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 1px;
+  width: 18px;
+  height: 4px;
+  background: #2563EB;
+  border-radius: 99px;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.page-title-wrap:hover::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Sort arrow rotation ─────────────────── */
+.sort-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.sort-asc  .sort-icon { transform: rotate(0deg); }
+.sort-desc .sort-icon { transform: rotate(180deg); }

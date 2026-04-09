@@ -13,13 +13,14 @@ function RiskDot({ score }) {
 
 function Badge({ children, variant = 'neutral' }) {
   const styles = {
-    success: 'bg-green-50 text-green-700',
-    danger: 'bg-red-50 text-red-700',
-    warning: 'bg-yellow-50 text-yellow-700',
-    neutral: 'bg-blue-50 text-blue-700',
+    success: 'bg-green-50 text-green-700 border border-green-100',
+    danger: 'bg-red-50 text-red-700 border border-red-100',
+    warning: 'bg-yellow-50 text-yellow-700 border border-yellow-100',
+    neutral: 'bg-blue-50 text-blue-700 border border-blue-100',
   }
   return (
-    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${styles[variant]}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${styles[variant]} ${variant === 'success' ? 'badge-won' : ''}`}>
+      {variant === 'success' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />}
       {children}
     </span>
   )
@@ -53,8 +54,16 @@ export default function ClientDetail({ client, onClose }) {
   const convProb = Math.round((client.conversion_probability || 0) * 100)
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-surface rounded-2xl max-w-2xl w-full mx-4 p-8 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ background: 'rgba(15,23,42,0.45)', animation: 'overlayIn 0.18s ease' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface rounded-2xl max-w-2xl w-full mx-4 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+        style={{ animation: 'modalSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>

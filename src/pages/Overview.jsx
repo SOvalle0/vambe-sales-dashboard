@@ -1,9 +1,10 @@
-import { useState } from 'react'
 import { Users, TrendingUp, DollarSign, Repeat, AlertTriangle, Target, BarChart2, Sprout } from 'lucide-react'
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import KPICard from '../components/KPICard'
+import ChartCard from '../components/ChartCard'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
+import AccionesRecomendadas from '../components/AccionesRecomendadas'
 
 function countBy(arr, key) {
   const counts = {}
@@ -44,46 +45,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-function ChartCard({ title, subtitle, isAI, insight, methodology, children }) {
-  const [showMethod, setShowMethod] = useState(false)
-  const [showInsight, setShowInsight] = useState(true)
-  return (
-    <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-      <div className="flex items-baseline gap-1 mb-1">
-        <h2 className="text-lg font-semibold text-text">{title}</h2>
-        {isAI && <span className="text-text-muted text-sm" title="Categorizado por IA">*</span>}
-      </div>
-      <p className="text-xs text-text-muted mb-4">{subtitle}</p>
-      {children}
-      <div className="flex gap-3 mt-3">
-        {insight && (
-          <button
-            onClick={() => setShowInsight(!showInsight)}
-            className="text-[11px] text-brand hover:text-brand-hover font-medium transition-colors"
-          >
-            {showInsight ? '▾ Ocultar insight' : '▸ Insight'}
-          </button>
-        )}
-        {methodology && (
-          <button
-            onClick={() => setShowMethod(!showMethod)}
-            className="text-[11px] text-text-muted hover:text-text-secondary transition-colors"
-          >
-            {showMethod ? '▾ Ocultar metodología' : '▸ ¿Cómo se calcula?'}
-          </button>
-        )}
-      </div>
-      {showInsight && insight && (
-        <p className="mt-2 text-xs text-brand/80 leading-relaxed bg-brand-light border-l-2 border-brand/30 pl-3 py-2 rounded-r">
-          ⚡ {insight}
-        </p>
-      )}
-      {showMethod && methodology && (
-        <p className="mt-2 text-[11px] text-text-muted leading-relaxed border-l-2 border-border pl-3">{methodology}</p>
-      )}
-    </div>
-  )
-}
+// ChartCard importado desde components/ChartCard.jsx
 
 // --- Motores lógicos de insight ---
 
@@ -253,24 +215,24 @@ export default function Overview() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-text mb-6">Overview</h1>
+      <div className="page-title-wrap mb-6"><h1 className="text-2xl font-bold text-text">Overview</h1></div>
 
       <Filters searchQuery={searchQuery} onSearch={setSearchQuery} onClearAll={clearAll} filters={filters} onFilter={setFilter} totalFiltered={total} />
 
       {/* KPIs Fila 1 */}
       <div className="grid grid-cols-2 gap-4 mb-4 sm:grid-cols-4">
-        <KPICard icon={Users} title="Total Leads" value={total} subtitle="Reuniones evaluadas" />
-        <KPICard icon={TrendingUp} title="Win Rate" value={`${winRate}%`} subtitle={`${closed} de ${total}`} />
-        <KPICard icon={DollarSign} title="Revenue Ganado" value={fmt(revenueGanado)} subtitle="ACV de deals cerrados" valueClassName="text-success" />
-        <KPICard icon={Repeat} title="MRR Ganado" value={fmt(Math.round(mrrGanado))} subtitle="Revenue mensualizado" />
+        <KPICard icon={Users} title="Total Leads" rawValue={total} formatFn={n => n.toString()} subtitle="Reuniones evaluadas" />
+        <KPICard icon={TrendingUp} title="Win Rate" rawValue={winRate} formatFn={n => `${n}%`} subtitle={`${closed} de ${total}`} />
+        <KPICard icon={DollarSign} title="Revenue Ganado" rawValue={revenueGanado} formatFn={fmt} subtitle="ACV de deals cerrados" valueClassName="text-success" />
+        <KPICard icon={Repeat} title="MRR Ganado" rawValue={Math.round(mrrGanado)} formatFn={fmt} subtitle="Revenue mensualizado" />
       </div>
 
       {/* KPIs Fila 2 */}
       <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
         <KPICard icon={AlertTriangle} title="Risk Promedio" value={avgRiskWon} subtitle="Solo clientes ganados" valueClassName={riskColor} />
-        <KPICard icon={Target} title="% PMF Fuerte" value={`${pmfFuerte}%`} subtitle="Signal de Product-Market Fit" />
-        <KPICard icon={BarChart2} title="Revenue Perdido" value={fmt(revenuePerdido)} subtitle={`${lost.length} deals no cerrados`} valueClassName="text-text-secondary" />
-        <KPICard icon={Sprout} title="Potencial Expansión" value={`${expansionPct}%`} subtitle="Ganados con trayectoria de crecimiento" />
+        <KPICard icon={Target} title="% PMF Fuerte" rawValue={pmfFuerte} formatFn={n => `${n}%`} subtitle="Signal de Product-Market Fit" />
+        <KPICard icon={BarChart2} title="Revenue Perdido" rawValue={revenuePerdido} formatFn={fmt} subtitle={`${lost.length} deals no cerrados`} valueClassName="text-text-secondary" />
+        <KPICard icon={Sprout} title="Potencial Expansión" rawValue={expansionPct} formatFn={n => `${n}%`} subtitle="Ganados con trayectoria de crecimiento" />
       </div>
 
       {/* Fila 1: Vendedor + Pipeline por Plan */}
@@ -278,6 +240,7 @@ export default function Overview() {
         <ChartCard
           title="Cierre por Vendedor"
           subtitle="Won (azul) vs Lost (gris) — horizontal stacked"
+          accentColor="#2563EB"
           insight={insightVendedor(byVendor)}
           methodology="Tabulación de estados Won vs Lost agrupados por la variable vendedor. El vendedor proviene del CSV original, sin intervención de IA."
         >
@@ -295,6 +258,7 @@ export default function Overview() {
         <ChartCard
           title="Valor por Plan"
           subtitle="ACV Won (azul) vs Lost (gris) por plan sugerido"
+          accentColor="#16A34A"
           isAI
           insight={insightPipelinePlan(byPlan)}
           methodology="Suma de USD acv_estimado* agrupada por plan_sugerido* y segmentada por estado. Permite ver cuánto revenue se captura vs se pierde en cada tier de precio."
@@ -392,6 +356,41 @@ export default function Overview() {
       </div>
 
       <p className="text-[11px] text-text-muted mt-4">* Categoría derivada del análisis de IA sobre las transcripciones de reuniones de venta.</p>
+
+      <AccionesRecomendadas acciones={[
+        {
+          prioridad: 'ALTA', tema: 'Pipeline', icon: '📈', titulo: `Win Rate en ${winRate}% — ${winRate >= 60 ? 'mantener momentum' : 'hay margen de mejora'}`,
+          texto: winRate >= 60
+            ? `${closed} de ${total} leads cerrados. El equipo está rindiendo bien. Foco en aumentar volumen de leads calificados.`
+            : `${total - closed} deals perdidos. Revisar las etapas donde se pierde traction: calificación, demo y seguimiento.`,
+        },
+        {
+          prioridad: 'ALTA', tema: 'Revenue', icon: '💰', titulo: 'Recuperar el revenue en pipeline perdido',
+          texto: `Se perdieron ${fmt(revenuePerdido)} en deals que no cerraron. Identificar los top 3 lost con mayor ACV y hacer un follow-up con nueva propuesta de valor.`,
+        },
+        {
+          prioridad: 'MEDIA', tema: 'Retención', icon: '🛡️', titulo: `Risk promedio de ${avgRiskWon} — ${parseFloat(avgRiskWon) < 2 ? 'base de clientes sana' : 'atención requerida'}`,
+          texto: parseFloat(avgRiskWon) < 2
+            ? 'Los clientes ganados tienen bajo riesgo de churn. Momento ideal para solicitar referidos y casos de éxito.'
+            : `Risk promedio ${avgRiskWon}/4. Revisar clientes con score 3+ en Onboarding Risk y activar playbook de retención.`,
+        },
+        {
+          prioridad: 'MEDIA', tema: 'PMF', icon: '🎯', titulo: `${pmfFuerte}% con PMF Signal fuerte`,
+          texto: pmfFuerte >= 50
+            ? 'Más de la mitad del pipeline tiene señal fuerte de product-market fit. Usar estos casos como testimonios de venta.'
+            : 'Menos del 50% con PMF fuerte. Revisar si el ICP está bien definido y si la demo comunica el valor correcto.',
+        },
+        {
+          prioridad: 'BAJA', tema: 'Expansión', icon: '🚀', titulo: `${expansionPct}% de clientes con potencial de expansión`,
+          texto: expansionPct > 0
+            ? `${expansionPct}% de los clientes ganados tienen señal de expansión. Definir un playbook de upsell para activarlo a los 60 días post-cierre.`
+            : 'Sin señales de expansión detectadas aún. Incorporar preguntas de expansión en la demo para identificar oportunidades futuras.',
+        },
+        {
+          prioridad: 'BAJA', tema: 'Proceso', icon: '⚙️', titulo: 'Estandarizar el proceso de calificación',
+          texto: `Con ${total} leads analizados hay suficiente data para construir un scoring model. Priorizar leads por: industria top + sentimiento entusiasta + urgencia alta.`,
+        },
+      ]} />
     </div>
   )
 }

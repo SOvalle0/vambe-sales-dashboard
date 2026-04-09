@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { DollarSign, Star, BarChart2, Clock } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -6,6 +5,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import KPICard from '../components/KPICard'
+import ChartCard from '../components/ChartCard'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
 
@@ -53,39 +53,6 @@ const ScatterTooltip = ({ active, payload }) => {
   )
 }
 
-function ChartCard({ title, subtitle, isAI, insight, methodology, children }) {
-  const [showMethod, setShowMethod] = useState(false)
-  const [showInsight, setShowInsight] = useState(true)
-  return (
-    <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-      <div className="flex items-baseline gap-1 mb-1">
-        <h2 className="text-lg font-semibold text-text">{title}</h2>
-        {isAI && <span className="text-text-muted text-sm" title="Variable derivada con IA">*</span>}
-      </div>
-      <p className="text-xs text-text-muted mb-4">{subtitle}</p>
-      {children}
-      <div className="flex gap-3 mt-3">
-        {insight && (
-          <button onClick={() => setShowInsight(!showInsight)} className="text-[11px] text-brand hover:text-brand-hover font-medium transition-colors">
-            {showInsight ? '▾ Ocultar insight' : '▸ Insight'}
-          </button>
-        )}
-        {methodology && (
-          <button onClick={() => setShowMethod(!showMethod)} className="text-[11px] text-text-muted hover:text-text-secondary transition-colors">
-            {showMethod ? '▾ Ocultar metodología' : '▸ ¿Cómo se calcula?'}
-          </button>
-        )}
-      </div>
-      {showInsight && insight && (
-        <p className="mt-2 text-xs text-brand/80 leading-relaxed bg-brand-light border-l-2 border-brand/30 pl-3 py-2 rounded-r">⚡ {insight}</p>
-      )}
-      {showMethod && methodology && (
-        <p className="mt-2 text-[11px] text-text-muted leading-relaxed border-l-2 border-border pl-3">{methodology}</p>
-      )}
-    </div>
-  )
-}
-
 // --- Motores de insight ---
 
 function insightScatter(clients) {
@@ -125,22 +92,20 @@ function insightPriorityResult(data) {
   const alta = data.find(d => d.name === 'Alta')
   const baja = data.find(d => d.name === 'Baja')
   if (alta && baja) {
-    const altaRate = alta.total > 0 ? Math.round((alta.won / alta.total) * 100) : 0
-    const bajaRate = baja.total > 0 ? Math.round((baja.won / baja.total) * 100) : 0
+    const altaRate = alta.wonPct
+    const bajaRate = baja.wonPct
     if (altaRate > bajaRate + 10) {
-      return `El Priority Score predice exitosamente: Alta prioridad cierra ${altaRate}% vs ${bajaRate}% en Baja. Instruir al equipo a accionar sobre top scores.`
-    }
-    if (bajaRate >= altaRate) {
-      return 'Anomalía: deals de baja prioridad cierran igual o más. Recalibrar parámetros del score.'
+      return `El Priority Score predice exitosamente: Alta prioridad cierra ${altaRate}% vs ${bajaRate}% en Baja.`
     }
   }
-  return 'Correlación moderada entre Priority Score y resultado. Usar como guía complementaria, no única.'
+  return 'Correlación moderada entre Priority Score y resultado.'
 }
 
 // --- Componente principal ---
 
 export default function PipelineIntelligence() {
   const { filtered: clients, searchQuery, setSearchQuery, clearAll, filters, setFilter } = useFilteredClients()
+  
   // KPIs
   const flujoTotal = clients.reduce((s, c) => s + (c.acv_estimado || 0), 0)
   const scores = clients.map(c => c.deal_priority_score || 0).sort((a, b) => a - b)
@@ -224,10 +189,10 @@ export default function PipelineIntelligence() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
-        <KPICard icon={DollarSign} title="Flujo Total" value={fmt(flujoTotal)} subtitle="Oportunidades evaluadas (Won + Lost)" />
-        <KPICard icon={Star} title="Alta Prioridad" value={dealsAltaPrioridad} subtitle={`Score ≥ ${p75.toFixed(1)} (P75)`} />
-        <KPICard icon={BarChart2} title="ACV Promedio" value={fmt(acvProm)} subtitle="Tamaño promedio del deal" />
-        <KPICard icon={Clock} title="Días Prom. al Cierre" value={`~${avgCloseDays}d`} subtitle="Estimado por perfil" />
+        <KPICard icon={DollarSign} title="Flujo Total" rawValue={flujoTotal} formatFn={fmt} subtitle="Oportunidades evaluadas" />
+        <KPICard icon={Star} title="Alta Prioridad" rawValue={dealsAltaPrioridad} subtitle={`Score ≥ ${p75.toFixed(1)} (P75)`} />
+        <KPICard icon={BarChart2} title="ACV Promedio" rawValue={acvProm} formatFn={fmt} subtitle="Tamaño promedio del deal" />
+        <KPICard icon={Clock} title="Días Cierre" rawValue={avgCloseDays} formatFn={n => `~${n}d`} subtitle="Estimado por perfil" />
       </div>
 
       {/* Fila 1: Scatter + Vendor Pipeline */}
@@ -236,30 +201,33 @@ export default function PipelineIntelligence() {
           title="Readiness vs Complexity"
           subtitle="Cuadrantes de priorización — tamaño = ACV"
           isAI
+          accentColor="#2563EB"
           insight={insightScatter(clients)}
-          methodology="Gráfico de dispersión: buyer_readiness* (Y) vs integration_complexity* (X). Cuadrantes: Superior-Izq = Quick Wins, Superior-Der = Push Hard, Inferior-Izq = Nurture, Inferior-Der = Deprioritize."
+          methodology="Gráfico de dispersión: buyer_readiness* (Y) vs integration_complexity* (X). Cuadrantes estrategicos según IA."
         >
-          <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis type="number" dataKey="integration_complexity" name="Complexity" domain={[0, 3]}
-                tick={{ fontSize: 12, fill: '#64748B' }} label={{ value: 'Integration Complexity →', position: 'bottom', fontSize: 11, fill: '#94A3B8' }} />
-              <YAxis type="number" dataKey="buyer_readiness" name="Readiness" domain={[0, 4]}
-                tick={{ fontSize: 12, fill: '#64748B' }} label={{ value: '← Buyer Readiness', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#94A3B8' }} />
-              <ZAxis type="number" dataKey="acv_estimado" range={[40, 400]} />
-              <ReferenceLine x={1.5} stroke="#E2E8F0" strokeDasharray="3 3" />
-              <ReferenceLine y={2} stroke="#E2E8F0" strokeDasharray="3 3" />
-              <Tooltip content={<ScatterTooltip />} />
-              <Scatter data={scatterData}>
-                {scatterData.map((d, i) => (
-                  <Cell key={i} fill={d.closed === 1 ? '#2563EB' : '#DC2626'} fillOpacity={0.7} />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-2 text-[11px] text-text-muted justify-center">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand inline-block" /> Won</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-danger inline-block" /> Lost</span>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis type="number" dataKey="integration_complexity" name="Complexity" domain={[0, 3]}
+                  tick={{ fontSize: 12, fill: '#64748B' }} label={{ value: 'Complexity →', position: 'bottom', fontSize: 11, fill: '#94A3B8' }} />
+                <YAxis type="number" dataKey="buyer_readiness" name="Readiness" domain={[0, 4]}
+                  tick={{ fontSize: 12, fill: '#64748B' }} label={{ value: '← Readiness', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#94A3B8' }} />
+                <ZAxis type="number" dataKey="acv_estimado" range={[40, 400]} />
+                <ReferenceLine x={1.5} stroke="#E2E8F0" strokeDasharray="3 3" />
+                <ReferenceLine y={2} stroke="#E2E8F0" strokeDasharray="3 3" />
+                <Tooltip content={<ScatterTooltip />} />
+                <Scatter data={scatterData}>
+                  {scatterData.map((d, i) => (
+                    <Cell key={i} fill={d.closed === 1 ? '#2563EB' : '#DC2626'} fillOpacity={0.7} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] text-text-muted justify-center">
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand inline-block" /> Won</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" /> Lost</span>
             <span>↖ Quick Wins</span>
             <span>↗ Push Hard</span>
             <span>↙ Nurture</span>
@@ -268,72 +236,82 @@ export default function PipelineIntelligence() {
         </ChartCard>
 
         <ChartCard
-          title="Valor por Vendedor"
-          subtitle="ACV acumulado Won (azul) vs Lost (gris)"
+          title="Pipeline p/Vendedor (ACV)"
+          subtitle="Eficiencia de capital asignada por equipo"
+          accentColor="#F59E0B"
           insight={insightVendorPipeline(byVendorPipeline)}
-          methodology="Agrupación de sum(acv_estimado) fraccionada por estado para cada vendedor."
+          methodology="Suma de revenue (ACV) Won vs Lost agrupada por vendedor."
         >
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={byVendorPipeline} layout="vertical" barSize={28}>
-              <XAxis type="number" tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={v => fmt(v)} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} width={80} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="won" fill="#2563EB" name="Won" stackId="stack" />
-              <Bar dataKey="lost" fill="#E2E8F0" name="Lost" stackId="stack" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byVendorPipeline} layout="vertical" barSize={24} margin={{ left: 20, right: 20 }}>
+                <XAxis type="number" tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={v => fmt(v)} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} width={80} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="won" fill="#2563EB" name="Won" stackId="a" />
+                <Bar dataKey="lost" fill="#E2E8F0" name="Lost" stackId="a" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </div>
 
-      {/* Fila 2: Días al Cierre + Priority × Resultado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <ChartCard
-          title="Distribución de Días al Cierre"
-          subtitle="Frecuencia por rango de días estimados"
+          title="Distribución Días al Cierre"
+          subtitle="Ciclo comercial estimado por perfil"
           isAI
+          accentColor="#0EA5E9"
           insight={insightCloseDays(closeDaysHist)}
-          methodology="Conteo de frecuencias en rangos de estimated_close_days*. Fórmula: 30 - (readiness × 5) + (complexity × 10), clamped 7-90. Es estimación basada en perfil — requiere calibración con datos reales de CRM."
+          methodology="Histograma de tiempo comercial basado en readiness y complexity."
         >
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={closeDaysHist} barSize={40}>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748B' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" fill="#0EA5E9" name="Deals" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={closeDaysHist} barSize={40}>
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748B' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" fill="#0EA5E9" name="Deals" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         <ChartCard
           title="Priority Score × Resultado"
-          subtitle="Win Rate por tercil de prioridad (Baja / Media / Alta)"
+          subtitle="Win Rate por tercil de prioridad"
           isAI
+          accentColor="#16A34A"
           insight={insightPriorityResult(priorityResult)}
-          methodology="Agrupamiento por terciles dinámicos de deal_priority_score*. Se usa percentiles del dataset (no rangos fijos) porque la distribución tiende a concentrarse en valores bajos."
+          methodology="Win Rate real comparado contra el score predictivo de la IA."
         >
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={priorityResult} barSize={40}>
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748B' }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                const d = payload[0]?.payload
-                return (
-                  <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-md text-sm">
-                    <p className="font-medium text-text">Prioridad {label}</p>
-                    <p className="text-success">Won: {d?.won} ({d?.wonPct}%)</p>
-                    <p className="text-danger">Lost: {d?.lost} ({d?.lostPct}%)</p>
-                    <p className="text-text-secondary">Total: {d?.total}</p>
-                  </div>
-                )
-              }} />
-              <Bar dataKey="wonPct" fill="#2563EB" name="% Won" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={priorityResult} barSize={40}>
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748B' }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                <Tooltip content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0]?.payload
+                  return (
+                    <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-md text-sm">
+                      <p className="font-medium text-text">Prioridad {label}</p>
+                      <p className="text-success font-medium">Won: {d?.won} ({d?.wonPct}%)</p>
+                      <p className="text-danger">Lost: {d?.lost} ({d?.lostPct}%)</p>
+                      <p className="text-text-secondary text-xs mt-1">Total deals: {d?.total}</p>
+                    </div>
+                  )
+                }} />
+                <Bar dataKey="wonPct" fill="#2563EB" name="% Won" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
       </div>
 
-      <p className="text-[11px] text-text-muted mt-4">* Variable derivada del análisis de IA y/o heurísticas de negocio sobre los datos categorizados.</p>
+      <p className="text-[11px] text-text-muted mt-6 italic">
+        * Las variables marcadas con asterisco son derivadas mediante el análisis de Inteligencia Artificial (Gemini) sobre las interacciones de venta.
+      </p>
     </div>
   )
 }
