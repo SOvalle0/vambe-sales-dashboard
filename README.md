@@ -122,7 +122,7 @@ Vercel (deploy estático)
 
 ### Stack
 
-- **Procesamiento:** Python 3 + Google Gemini API (`gemini-2.0-flash-lite`)
+- **Procesamiento:** Python 3 + Google Gemini API (`gemini-3.1-flash-lite-preview`)
 - **Frontend:** React + Vite + Recharts + Lucide Icons
 - **Estilos:** Tailwind CSS con design system personalizado
 - **Deploy:** Vercel
