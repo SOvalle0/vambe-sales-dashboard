@@ -357,6 +357,13 @@ export default function ConversionAnalysis() {
           title="Caso de Uso → Conversión"
           subtitle="Segmentos con mejor encaje"
           accentColor={C.warning}
+          insight={(() => {
+            if (!byCasoUso.length) return ''
+            const best = byCasoUso[0]
+            const worst = byCasoUso[byCasoUso.length - 1]
+            if (byCasoUso.length < 2) return `"${best.name}" es el único caso de uso con ${best.winRate}% win rate.`
+            return `"${best.name}" lidera con ${best.winRate}% de conversión. "${worst.name}" es el más débil (${worst.winRate}%). Concentrar el pitch en el caso ganador.`
+          })()}
           methodology="Clasificación del dolor principal detectado en la primera reunión."
         >
           <div className="h-[250px]">
@@ -380,6 +387,15 @@ export default function ConversionAnalysis() {
         <ChartCard
           title="Urgencia × Win Rate"
           accentColor={C.danger}
+          insight={(() => {
+            if (byUrgencia.length < 2) return ''
+            const alta = byUrgencia.find(u => u.name === 'Alta')
+            const baja = byUrgencia.find(u => u.name === 'Baja')
+            if (!alta || !baja) return ''
+            if (alta.winRate > baja.winRate)
+              return `Urgencia alta convierte mejor: ${alta.winRate}% vs ${baja.winRate}%. El apuro genuino del lead acelera la decisión.`
+            return `Urgencia alta no predice cierre (${alta.winRate}%). El lead urgente puede estar comparando precios — calificar mejor antes de invertir tiempo.`
+          })()}
           methodology="Evaluación de timing declarada por el lead."
         >
           <div className="h-[200px]">
@@ -398,6 +414,12 @@ export default function ConversionAnalysis() {
         <ChartCard
           title="Sentimiento × Win Rate"
           accentColor={C.brand}
+          insight={(() => {
+            if (bySentimiento.length < 2) return ''
+            const best = bySentimiento[0]
+            const worst = bySentimiento[bySentimiento.length - 1]
+            return `Sentimiento "${best.name}" cierra al ${best.winRate}% vs "${worst.name}" al ${worst.winRate}%. Brecha de ${best.winRate - worst.winRate}pp — el estado emocional es una señal de calificación válida.`
+          })()}
           methodology="Clasificación emocional de la reunión (IA)."
         >
           <div className="h-[200px]">
@@ -417,6 +439,13 @@ export default function ConversionAnalysis() {
         <ChartCard
           title="Objeciones"
           accentColor={C.muted}
+          insight={(() => {
+            const { wrSin, wrCon } = objeciones
+            const diff = wrSin - wrCon
+            if (diff > 0)
+              return `Sin objeción cierra ${diff}pp más (${wrSin}% vs ${wrCon}%). El silencio del lead es una señal positiva — no forzar conversación cuando no hay resistencia.`
+            return `Los leads que objetan cierran igual o mejor (${wrCon}% vs ${wrSin}%). Las objeciones son señal de evaluación activa — entrenar al equipo para capitalizarlas.`
+          })()}
           methodology="Impacto de la resistencia en el win rate."
         >
           <div className="space-y-6 pt-4">
@@ -441,6 +470,15 @@ export default function ConversionAnalysis() {
         <ChartCard
           title="Complejidad vs Conversión"
           accentColor="#64748B"
+          insight={(() => {
+            if (byDealComplexity.length < 2) return ''
+            const low  = byDealComplexity[0]
+            const high = byDealComplexity[byDealComplexity.length - 1]
+            const diff = low.winRate - high.winRate
+            if (diff > 10)
+              return `A mayor complejidad, menos conversión: Nivel ${low.level} cierra al ${low.winRate}% vs Nivel ${high.level} al ${high.winRate}% (-${diff}pp). Deals complejos necesitan Sales Engineering o descuento de cierre.`
+            return `La complejidad técnica no destruye conversión (Nivel ${low.level}: ${low.winRate}% vs Nivel ${high.level}: ${high.winRate}%). El equipo maneja bien deals técnicos.`
+          })()}
           methodology="Correlación entre dificultad técnica y probabilidad de cierre."
         >
           <div className="h-[250px]">
@@ -459,6 +497,14 @@ export default function ConversionAnalysis() {
         <ChartCard
           title="Distribución Días al Cierre"
           accentColor={C.success}
+          insight={(() => {
+            const { avgWon, avgLost } = diasCierre
+            if (!avgWon && !avgLost) return ''
+            const diff = avgLost - avgWon
+            if (diff > 5)
+              return `Won cierra en ${avgWon}d en promedio, Lost en ${avgLost}d (+${diff}d). Los deals que se prolongan más allá de ${avgWon + 10}d tienen probabilidad decreciente de cerrarse — implementar límite de seguimiento activo.`
+            return `Ciclo de venta similar entre Won (${avgWon}d) y Lost (${avgLost}d). El tiempo invertido no predice cierre; calificar por señales de urgencia y sentimiento.`
+          })()}
           methodology="Ciclo de venta Won vs Lost."
         >
           <div className="h-[250px]">

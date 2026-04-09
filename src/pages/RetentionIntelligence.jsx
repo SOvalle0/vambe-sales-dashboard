@@ -447,6 +447,15 @@ export default function RetentionIntelligence() {
           title="Vendedor → Perfil de Riesgo"
           subtitle="Riesgo promedio de los cierres por ejecutivo"
           accentColor="#64748B"
+          insight={(() => {
+            if (vendorRisk.length < 2) return ''
+            const highest = vendorRisk[0]
+            const lowest  = vendorRisk[vendorRisk.length - 1]
+            const diff    = (highest.avgRisk - lowest.avgRisk).toFixed(1)
+            if (parseFloat(diff) >= 0.5)
+              return `${highest.vendedor} cierra con el mayor riesgo promedio (${highest.avgRisk}) vs ${lowest.vendedor} (${lowest.avgRisk}). Brecha de ${diff}pts — revisar si el proceso de calificación difiere entre vendedores.`
+            return `Los vendedores tienen perfiles de riesgo similares (${lowest.avgRisk}–${highest.avgRisk}). El riesgo del cliente no depende significativamente de quién cierra.`
+          })()}
           methodology="Señal de alineación entre ventas y CS."
         >
           <div className="h-[250px]">
