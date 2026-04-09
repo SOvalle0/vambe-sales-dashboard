@@ -4,7 +4,7 @@ Panel interactivo que procesa transcripciones de reuniones de ventas, categoriza
 
 ## 🔗 Link de la aplicación
 
-> *(agregar URL de Vercel después del deploy)*
+**[https://vambe-sales-dashboard.vercel.app](https://vambe-sales-dashboard.vercel.app)**
 
 ---
 
