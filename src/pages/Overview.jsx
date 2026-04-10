@@ -17,11 +17,7 @@ function countBy(arr, key) {
     .sort((a, b) => b.value - a.value)
 }
 
-const fmt = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${n}`
-}
+import { fmt } from '../lib/format'
 
 const CURRENCY_NAMES = new Set(['Valor', 'ACV', 'Revenue', 'MRR', 'Won', 'Lost'])
 const COUNT_NAMES = new Set(['Leads', 'Cerrados', 'Perdidos', 'Clientes', 'Reuniones'])
@@ -372,7 +368,7 @@ export default function Overview() {
           prioridad: 'MEDIA', tema: 'Retención', icon: '🛡️', titulo: `Risk promedio de ${avgRiskWon} — ${parseFloat(avgRiskWon) < 2 ? 'base de clientes sana' : 'atención requerida'}`,
           texto: parseFloat(avgRiskWon) < 2
             ? 'Los clientes ganados tienen bajo riesgo de churn. Momento ideal para solicitar referidos y casos de éxito.'
-            : `Risk promedio ${avgRiskWon}/4. Revisar clientes con score 3+ en Onboarding Risk y activar playbook de retención.`,
+            : `Risk promedio ${avgRiskWon}/5. Revisar clientes con score 3+ en Onboarding Risk y activar playbook de retención.`,
         },
         {
           prioridad: 'MEDIA', tema: 'PMF', icon: '🎯', titulo: `${pmfFuerte}% con PMF Signal fuerte`,

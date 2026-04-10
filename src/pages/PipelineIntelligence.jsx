@@ -8,12 +8,7 @@ import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
-
-const fmt = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${n}`
-}
+import { fmt } from '../lib/format'
 
 const CURRENCY_NAMES = new Set(['Valor', 'ACV', 'Won', 'Lost'])
 

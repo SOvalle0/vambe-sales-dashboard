@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Users, AlertTriangle, DollarSign, Flame } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Cell, LabelList,
+  CartesianGrid, Cell, LabelList, ReferenceLine,
 } from 'recharts'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
@@ -10,19 +10,14 @@ import ClientDetail from '../components/ClientDetail'
 import useFilteredClients from '../hooks/useFilteredClients'
 import Filters from '../components/Filters'
 import AccionesRecomendadas from '../components/AccionesRecomendadas'
-
-const fmt = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${n}`
-}
-
-const C = {
-  safe:    '#16A34A',
-  warning: '#F59E0B',
-  danger:  '#DC2626',
-  neutral: '#64748B',
-}
+import { fmt } from '../lib/format'
+import {
+  RISK_COLORS as C,
+  riskColorByValue,
+  heatColor,
+  LollipopBar,
+  SectionHeader,
+} from '../lib/charts'
 
 const ACTIVATION_FLAGS = new Set(['requiere integración', 'presión de implementación', 'recursos limitados'])
 const PERMANENCE_FLAGS = new Set(['tiene objeciones', 'motivación reactiva'])
@@ -54,50 +49,6 @@ function riskColor(level) {
   if (level === 'critical') return C.danger
   if (level === 'warning')  return C.warning
   return C.safe
-}
-
-function riskColorByValue(v) {
-  if (v >= 2) return C.danger
-  if (v >= 1) return C.warning
-  return C.safe
-}
-
-function heatColor(pct) {
-  if (pct === 0)   return { bg: '',             text: 'text-text-muted' }
-  if (pct <= 33)   return { bg: 'bg-amber-50',  text: 'text-amber-700' }
-  if (pct <= 66)   return { bg: 'bg-amber-200', text: 'text-amber-900' }
-  return                  { bg: 'bg-amber-400', text: 'text-white' }
-}
-
-function SectionHeader({ title, subtitle }) {
-  return (
-    <div className="mt-8 mb-4">
-      <h2 className="text-lg font-bold text-text">{title}</h2>
-      {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
-    </div>
-  )
-}
-
-// ── Lollipop custom bar shape ──
-function LollipopBar({ x, y, width, height, fill }) {
-  const cy = y + height / 2
-  return (
-    <g>
-      <line x1={x} y1={cy} x2={x + width} y2={cy} stroke={fill} strokeWidth={2.5} strokeLinecap="round" />
-      <circle cx={x + width} cy={cy} r={8} fill={fill} stroke="white" strokeWidth={2} />
-    </g>
-  )
-}
-
-// ── Tooltip helper ──
-function TBox({ lines }) {
-  return (
-    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm" style={{ boxShadow: '0 4px 16px rgba(37,99,235,0.10), 0 1px 4px rgba(15,23,42,0.06)' }}>
-      {lines.map((l, i) => (
-        <p key={i} className={i === 0 ? 'font-medium text-text' : 'text-text-secondary text-xs mt-0.5'}>{l}</p>
-      ))}
-    </div>
-  )
 }
 
 // ── Insight generators ──
@@ -288,6 +239,53 @@ export default function RetentionIntelligence() {
     safe:     baseData.filter(d => d.activacion === 0 && d.permanencia === 0),
   }), [baseData])
 
+  // ── Validación del Risk Score contra `closed` ──
+  // La decisión de ocultarle `closed` al LLM obliga a probar qué tan
+  // correlacionado quedó el score con el resultado de la venta. Si fuera
+  // predictivo del cierre, estaríamos duplicando señal que ya dan Readiness
+  // y Priority Score. Queremos lo contrario: ortogonalidad.
+  const riskValidation = useMemo(() => {
+    if (!clients.length) return null
+    const baseline = clients.filter(c => c.closed === 1).length / clients.length
+    const buckets = [0, 1, 2, 3, 4, 5].map(score => {
+      const g = clients.filter(c => c.retention_risk_score === score)
+      const wins = g.filter(c => c.closed === 1).length
+      return {
+        score,
+        n: g.length,
+        winRate: g.length ? wins / g.length : null,
+        winRatePct: g.length ? Math.round((wins / g.length) * 100) : null,
+        lift: g.length ? Math.round((wins / g.length - baseline) * 100) : null,
+      }
+    }).filter(b => b.n > 0)
+
+    // Brier score tratando (score/5) como P(lost). Comparar contra un
+    // clasificador constante igual a la tasa global de lost.
+    const meanLost = 1 - baseline
+    const brier = clients.reduce((acc, c) => {
+      const p = c.retention_risk_score / 5
+      const y = c.closed === 1 ? 0 : 1
+      return acc + (p - y) ** 2
+    }, 0) / clients.length
+    const brierBase = meanLost * (1 - meanLost)
+    const skill = brierBase > 0 ? 1 - brier / brierBase : 0
+
+    const won = clients.filter(c => c.closed === 1)
+    const lost = clients.filter(c => c.closed !== 1)
+    const avgWon = won.length ? won.reduce((s, c) => s + c.retention_risk_score, 0) / won.length : 0
+    const avgLost = lost.length ? lost.reduce((s, c) => s + c.retention_risk_score, 0) / lost.length : 0
+
+    return {
+      buckets,
+      baselinePct: Math.round(baseline * 100),
+      brier: brier.toFixed(3),
+      skill: skill.toFixed(2),
+      avgWon: avgWon.toFixed(2),
+      avgLost: avgLost.toFixed(2),
+      orthogonal: Math.abs(skill) < 0.15, // casi sin discriminación = ortogonal al cierre
+    }
+  }, [clients])
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="page-title-wrap"><h1 className="text-2xl font-bold mb-1 text-text">Onboarding Risk</h1></div>
@@ -446,7 +444,7 @@ export default function RetentionIntelligence() {
           <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={canalRisk} layout="vertical" margin={{ right: 40 }}>
-                <XAxis type="number" domain={[0, 4]} hide />
+                <XAxis type="number" domain={[0, 5]} hide />
                 <YAxis type="category" dataKey="canal" tick={{ fontSize: 11 }} width={100} />
                 <Bar dataKey="avgRisk" radius={[0, 4, 4, 0]}>
                   {canalRisk.map((d, i) => <Cell key={i} fill={riskColorByValue(d.avgRisk)} />)}
@@ -475,7 +473,7 @@ export default function RetentionIntelligence() {
           <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={vendorRisk} layout="vertical" margin={{ right: 40 }}>
-                <XAxis type="number" domain={[0, 4]} hide />
+                <XAxis type="number" domain={[0, 5]} hide />
                 <YAxis type="category" dataKey="vendedor" tick={{ fontSize: 12 }} width={80} />
                 <Bar dataKey="avgRisk" shape={<LollipopBar />}>
                   {vendorRisk.map((d, i) => <Cell key={i} fill={d.color} />)}
@@ -485,6 +483,104 @@ export default function RetentionIntelligence() {
           </div>
         </ChartCard>
       </div>
+
+      <SectionHeader title="Validación metodológica" subtitle="¿El Risk Score es independiente del resultado de la venta?" />
+
+      {riskValidation && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+          <ChartCard
+            title="Win Rate por Risk Score"
+            subtitle={`Base ${riskValidation.baselinePct}% — línea de referencia`}
+            accentColor="#64748B"
+            insight={(() => {
+              const wonAvg = parseFloat(riskValidation.avgWon)
+              const lostAvg = parseFloat(riskValidation.avgLost)
+              const diff = Math.abs(wonAvg - lostAvg).toFixed(2)
+              if (riskValidation.orthogonal) {
+                return `El Risk Score promedio de clientes ganados (${riskValidation.avgWon}) y perdidos (${riskValidation.avgLost}) es prácticamente idéntico (diff ${diff}). El score es ortogonal al cierre — mide una dimensión distinta de Readiness y Priority, que ya predicen la venta. Es exactamente lo que queríamos: no pasarle "closed" al LLM produjo un score que captura fricción post-venta, no señal comercial.`
+              }
+              return `Riesgo promedio — Won: ${riskValidation.avgWon} vs Lost: ${riskValidation.avgLost}. El score tiene correlación ${wonAvg > lostAvg ? 'positiva' : 'negativa'} con el cierre (skill ${riskValidation.skill}).`
+            })()}
+            methodology="Win rate calculado por cada bucket de score. La línea punteada muestra la tasa global. Brier score sobre score/5 → P(lost) comparado contra el baseline constante = tasa de lost."
+          >
+            <div className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={riskValidation.buckets} margin={{ top: 20, right: 20, bottom: 10, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis
+                    dataKey="score"
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Risk Score', position: 'insideBottom', offset: -2, style: { fontSize: 11, fill: '#64748B' } }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={v => `${v}%`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(37,99,235,0.05)' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      const d = payload[0].payload
+                      return (
+                        <div className="bg-surface border border-border rounded-lg px-3 py-2 text-xs shadow-md">
+                          <p className="font-semibold text-text">Score {d.score}</p>
+                          <p className="text-text-secondary">n = {d.n}</p>
+                          <p className="text-text-secondary">Win rate: <span className="font-bold text-text">{d.winRatePct}%</span></p>
+                          <p className="text-text-secondary">Lift: {d.lift > 0 ? '+' : ''}{d.lift}pp</p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <ReferenceLine
+                    y={riskValidation.baselinePct}
+                    stroke="#94A3B8"
+                    strokeDasharray="4 4"
+                    label={{ value: `Base ${riskValidation.baselinePct}%`, position: 'right', style: { fontSize: 10, fill: '#64748B' } }}
+                  />
+                  <Bar dataKey="winRatePct" radius={[6, 6, 0, 0]}>
+                    {riskValidation.buckets.map((d, i) => (
+                      <Cell key={i} fill={
+                        d.winRatePct >= riskValidation.baselinePct + 5 ? C.safe :
+                        d.winRatePct <= riskValidation.baselinePct - 5 ? C.danger :
+                        C.neutral
+                      } />
+                    ))}
+                    <LabelList dataKey="winRatePct" position="top" formatter={v => `${v}%`} style={{ fontSize: 11, fontWeight: 600 }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+          </div>
+
+          <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Estadísticas del score</p>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-[11px] text-text-secondary">Risk promedio — Won</p>
+                <p className="text-2xl font-bold text-text tabular-nums">{riskValidation.avgWon}<span className="text-sm text-text-muted font-normal">/5</span></p>
+              </div>
+              <div>
+                <p className="text-[11px] text-text-secondary">Risk promedio — Lost</p>
+                <p className="text-2xl font-bold text-text tabular-nums">{riskValidation.avgLost}<span className="text-sm text-text-muted font-normal">/5</span></p>
+              </div>
+              <div className="pt-3 border-t border-border">
+                <p className="text-[11px] text-text-secondary">Brier score</p>
+                <p className="text-xl font-bold text-text tabular-nums">{riskValidation.brier}</p>
+                <p className="text-[10px] text-text-muted mt-0.5">Skill vs baseline: {riskValidation.skill}</p>
+              </div>
+              <div className={`text-[11px] px-2 py-1.5 rounded-md ${riskValidation.orthogonal ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                {riskValidation.orthogonal
+                  ? '✓ Ortogonal al cierre — mide una dimensión distinta'
+                  : '⚠ Correlacionado con el cierre'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SectionHeader title="Playbook de Acción" subtitle="Asignación de recursos por tipo de riesgo" />
 

@@ -4,21 +4,10 @@ import ClientDetail from '../components/ClientDetail'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
 import { SkeletonRow } from '../components/Skeleton'
-
-const fmt = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${n}`
-}
-
-const fmtDate = (d) => {
-  if (!d) return '—'
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y.slice(2)}`
-}
+import { fmt, fmtDate } from '../lib/format'
 
 function RiskBar({ score }) {
-  const pct = Math.round((score / 4) * 100)
+  const pct = Math.round((score / 5) * 100)
   const color = score === 0 ? '#16A34A' : score <= 2 ? '#F59E0B' : '#DC2626'
   const bgColor = score === 0 ? '#F0FDF4' : score <= 2 ? '#FFFBEB' : '#FEF2F2'
   return (

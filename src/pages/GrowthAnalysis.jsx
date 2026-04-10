@@ -11,12 +11,8 @@ import ChartCard from '../components/ChartCard'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
 import AccionesRecomendadas from '../components/AccionesRecomendadas'
-
-const fmt = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${Math.round(n)}`
-}
+import { fmt } from '../lib/format'
+import { TBox, SectionHeader } from '../lib/charts'
 
 const LOOP_MAP = {
   'Referido': 'Viral',
@@ -68,16 +64,6 @@ function winRateColor(pct) {
 }
 
 // ── Tooltip components ──
-function TBox({ lines }) {
-  return (
-    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm" style={{ boxShadow: '0 4px 16px rgba(37,99,235,0.10), 0 1px 4px rgba(15,23,42,0.06)' }}>
-      {lines.map((l, i) => (
-        <p key={i} className={i === 0 ? 'font-medium text-text' : 'text-text-secondary text-xs mt-0.5'}>{l}</p>
-      ))}
-    </div>
-  )
-}
-
 const SignalTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   const d = payload[0]?.payload
@@ -100,15 +86,6 @@ const PMFTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   const d = payload[0]?.payload
   return <TBox lines={[`PMF ${label}`, `Win Rate: ${d?.winRate}%`, `MRR Won: ${fmt(d?.wonMrr || 0)}`, `Total: ${d?.total}`]} />
-}
-
-function SectionHeader({ title, subtitle }) {
-  return (
-    <div className="mt-8 mb-4">
-      <h2 className="text-lg font-bold text-text">{title}</h2>
-      {subtitle && <p className="text-xs text-text-muted">{subtitle}</p>}
-    </div>
-  )
 }
 
 function insightICPHeatmap(heatmap) {
@@ -255,7 +232,7 @@ export default function GrowthAnalysis() {
       { dim: 'Conv. Prob.', won: avg(won, 'conversion_probability'), lost: avg(lost, 'conversion_probability') },
       { dim: 'Complejidad', won: avg(won, 'deal_complexity') / 3, lost: avg(lost, 'deal_complexity') / 3 },
       { dim: 'Días (inv.)', won: 1 - avg(won, 'estimated_close_days') / 60, lost: 1 - avg(lost, 'estimated_close_days') / 60 },
-      { dim: 'Risk (inv.)', won: 1 - avg(won, 'retention_risk_score') / 4, lost: 1 - avg(lost, 'retention_risk_score') / 4 },
+      { dim: 'Risk (inv.)', won: 1 - avg(won, 'retention_risk_score') / 5, lost: 1 - avg(lost, 'retention_risk_score') / 5 },
       { dim: 'Readiness', won: avg(won, 'buyer_readiness') / 4, lost: avg(lost, 'buyer_readiness') / 4 },
       { dim: 'Priority', won: avg(won, 'deal_priority_score') / 6, lost: avg(lost, 'deal_priority_score') / 6 },
     ]
@@ -369,7 +346,7 @@ export default function GrowthAnalysis() {
     if (!won.length || !lost.length) return []
     return [
       { label: 'Conv. Probability', field: 'conversion_probability', max: 1,  invert: false },
-      { label: 'Risk Score',        field: 'retention_risk_score',   max: 4,  invert: true  },
+      { label: 'Risk Score',        field: 'retention_risk_score',   max: 5,  invert: true  },
       { label: 'Deal Complexity',   field: 'deal_complexity',        max: 3,  invert: false },
       { label: 'Días al cierre',    field: 'estimated_close_days',   max: 60, invert: true  },
       { label: 'Priority Score',    field: 'deal_priority_score',    max: 6,  invert: false },

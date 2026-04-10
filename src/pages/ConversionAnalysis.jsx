@@ -10,6 +10,8 @@ import ChartCard from '../components/ChartCard'
 import Filters from '../components/Filters'
 import useFilteredClients from '../hooks/useFilteredClients'
 import AccionesRecomendadas from '../components/AccionesRecomendadas'
+import { fmt } from '../lib/format'
+import { LollipopBar, TBox } from '../lib/charts'
 
 // ── Constants ────────────────────────────────────────────────────
 const C = {
@@ -21,38 +23,10 @@ const C = {
   soft:    '#F1F5F9',
 }
 
-const fmt = (n) => {
-  if (n == null) return '—'
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}k`
-  return `$${n}`
-}
-
 function wrColor(pct) {
   if (pct >= 70) return C.success
   if (pct >= 50) return C.warning
   return C.danger
-}
-
-// ── Helpers ──────────────────────────────────────────────────────
-function LollipopBar({ x, y, width, height, fill }) {
-  const cy = y + height / 2
-  return (
-    <g>
-      <line x1={x} y1={cy} x2={x + width} y2={cy} stroke={fill} strokeWidth={2.5} strokeLinecap="round" />
-      <circle cx={x + width} cy={cy} r={7} fill={fill} stroke="white" strokeWidth={2} />
-    </g>
-  )
-}
-
-function TBox({ lines }) {
-  return (
-    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm" style={{ boxShadow: '0 4px 16px rgba(37,99,235,0.10), 0 1px 4px rgba(15,23,42,0.06)' }}>
-      {lines.map((l, i) => (
-        <p key={i} className={i === 0 ? 'font-medium text-text' : 'text-text-secondary text-xs mt-0.5'}>{l}</p>
-      ))}
-    </div>
-  )
 }
 
 function SectionDivider({ title }) {
@@ -344,7 +318,7 @@ export default function ConversionAnalysis() {
               <BarChart data={byVendedor} layout="vertical" margin={{ left: 20, right: 40 }}>
                 <XAxis type="number" domain={[0, 100]} hide />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
-                <Bar dataKey="winRate" shape={<LollipopBar />}>
+                <Bar dataKey="winRate" shape={<LollipopBar r={7} />}>
                   {byVendedor.map((d, i) => <Cell key={i} fill={wrColor(d.winRate)} />)}
                   <LabelList dataKey="winRate" position="right" formatter={v => `${v}%`} style={{ fontSize: 11, fontWeight: 700 }} />
                 </Bar>
