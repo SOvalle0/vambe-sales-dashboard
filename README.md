@@ -33,8 +33,11 @@ A partir de un CSV con 60 transcripciones de reuniones de ventas, el sistema:
 ### Requisitos
 
 - Node.js 18+
-- Python 3.8+ *(solo si quieres re-correr la categorización)*
+- Python 3.10+ *(recomendado para compatibilidad con los últimos SDKs de IA)*
 - API Key de Google Gemini *(solo si quieres re-correr la categorización)*
+
+> [!NOTE]
+> Este proyecto utiliza `google-generativeai`. Google ha lanzado recientemente un nuevo SDK unificado (`google-genai`). Por estabilidad para esta entrega se mantuvo la versión anterior, pero se recomienda migrar en futuras iteraciones.
 
 ### 1. Clonar el repositorio
 
