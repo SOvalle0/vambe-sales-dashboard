@@ -111,6 +111,31 @@ function SectionHeader({ title, subtitle }) {
   )
 }
 
+function insightICPHeatmap(heatmap) {
+  if (!heatmap.matrix.length) return ''
+  const validCells = []
+  heatmap.matrix.forEach((row, ri) => {
+    row.forEach((cell, ci) => {
+      if (cell.winRate !== null && cell.n >= 2) {
+        validCells.push({ tipo: heatmap.tipos[ri], ind: heatmap.industrias[ci], wr: cell.winRate, n: cell.n })
+      }
+    })
+  })
+  if (!validCells.length) return 'Datos insuficientes para validar celdas ICP.'
+  const best = validCells.sort((a, b) => b.wr - a.wr)[0]
+  const worst = validCells.filter(c => c.wr < 40).sort((a, b) => a.wr - b.wr)[0]
+  
+  let msg = `Sweet Spot detectado: ${best.tipo} en ${best.ind} (${best.wr}% win rate).`
+  if (worst) msg += ` Fricción crítica en ${worst.tipo}/${worst.ind} (${worst.wr}%).`
+  return msg
+}
+
+function insightRadar(data) {
+  if (!data.length) return ''
+  const topDiff = [...data].sort((a, b) => (b.won - b.lost) - (a.won - a.lost))[0]
+  return `La mayor brecha de éxito está en "${topDiff.dim}". Los deals ganados sobrepasan a los perdidos significativamente en esta dimensión.`
+}
+
 // ── Main component ──
 export default function GrowthAnalysis() {
   const { filtered: clients, searchQuery, setSearchQuery, clearAll, filters, setFilter } = useFilteredClients()
@@ -571,7 +596,7 @@ export default function GrowthAnalysis() {
           subtitle="Win rate por combinación de segmento y sector"
           accentColor="#0EA5E9"
           isAI
-          insight="Los segmentos detectados en verde representan el Product-Market Fit validado. Los rojos indican fricción estructural."
+          insight={insightICPHeatmap(icpHeatmap)}
           methodology="Heatmap basado en win rate histórico por segmento cruzado."
         >
           <div className="overflow-x-auto pb-2">
@@ -617,7 +642,7 @@ export default function GrowthAnalysis() {
           accentColor="#F59E0B"
           isAI
           isEmpty={radarData.length === 0}
-          insight="La brecha entre las formas indica los predictores de éxito más confiables. Foco en readiness and conv. probability."
+          insight={insightRadar(radarData)}
           methodology="Valores normalizados de 0 a 1."
         >
           <div className="h-[280px]">

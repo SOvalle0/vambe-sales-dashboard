@@ -109,6 +109,20 @@ function insightHealthBar(hb) {
   return `${expPct}% del MRR activo tiene algún nivel de riesgo. ${hb.safe.count} clientes (${fmt(hb.safe.mrr)}/mes) en condiciones de entrada saludables.`
 }
 
+function insightFlagsFreq(flags) {
+  if (!flags.length) return ''
+  const top = flags[0]
+  const typeText = top.type === 'activacion' ? 'activación técnica' : 'relacional/permanencia'
+  return `El flag "${top.fullFlag}" es la fricción principal (${top.pct}% de la cartera). Indica un patrón crítico de ${typeText} que debe abordarse en el onboarding.`
+}
+
+function insightCanalRisk(canales) {
+  if (canales.length < 2) return ''
+  const risky = canales[0]
+  const safest = canales[canales.length - 1]
+  return `El canal ${risky.canal} atrae leads con mayor riesgo promedio (${risky.avgRisk}). ${safest.canal} es la fuente más estable (${safest.avgRisk}).`
+}
+
 const riskBadge = (level) => {
   if (level === 'critical') return { label: 'Crítico',   cls: 'bg-red-50 text-red-700 border-red-200' }
   if (level === 'warning')  return { label: 'En Riesgo', cls: 'bg-amber-50 text-amber-700 border-amber-200' }
@@ -400,7 +414,7 @@ export default function RetentionIntelligence() {
           subtitle="Tipos de fricción más comunes en el onboarding"
           accentColor="#DC2626"
           isAI
-          insight="Los flags de activación técnica dominan el volumen, mientras que los relacionales amenazan la permanencia."
+          insight={insightFlagsFreq(flagsFreq)}
           methodology="Frecuencia absoluta de flags en la cartera Won."
         >
           <div className="h-[210px]">
@@ -426,7 +440,7 @@ export default function RetentionIntelligence() {
           title="Canal → Risk Score"
           subtitle="Promedio de riesgo por fuente de adquisición"
           accentColor="#F59E0B"
-          insight="Ciertos canales atraen leads con mayor complejidad de implementación."
+          insight={insightCanalRisk(canalRisk)}
           methodology="Promedio de retention_risk_score por canal."
         >
           <div className="h-[250px]">

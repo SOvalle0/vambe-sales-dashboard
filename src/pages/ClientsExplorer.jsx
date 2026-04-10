@@ -230,8 +230,12 @@ export default function ClientsExplorer() {
               {!loaded && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
               {loaded && sorted.map((client, i) => (
                 <tr
-                  key={i}
-                  onClick={() => setSelectedClient(client)}
+                  key={client.nombre || i}
+                  onClick={() => {
+                    if (client && client.nombre) {
+                      setSelectedClient(client)
+                    }
+                  }}
                   className="group hover:bg-brand/[0.02] cursor-pointer transition-all duration-150"
                 >
                   {cols.map(col => renderCell(client, col.key))}
