@@ -364,4 +364,88 @@ Vambe tiene retención como problema real. Este tab transforma datos de venta en
 ### ¿Por qué Buyer Readiness no es columna si estaba en el plan?
 **Problema:** `buyer_readiness` es un score 0-4 que sin contexto interpretativo no le dice nada al usuario mirando la lista. Un "2" en la tabla no tiene significado sin saber que "2 = Explorando activamente".
 
-**Decisión:** `buyer_readiness` y `deal_complexity` quedaron exclusivamente dentro del modal de detalle bajo la sección "Sales Intelligence", donde aparecen con su etiqueta interpretativa ("3/4 — Listo para comprar", "1/4 — Baja fricción"). En la vista de lista, esas columnas suman ruido sin el contexto que las hace legibles. Si en el futuro se quiere agregar, se incluye en `ALL_COLUMNS` en una línea — la arquitectura del Column Picker lo soporta sin cambios adicionales.
+
+---
+
+## 12. Refinamiento de Diseño y Correcciones (Abril 2026)
+
+### ⏺ Resumen de cambios de diseño
+
+#### Bugs corregidos
+- **Página en blanco al filtrar**: `Filter` (ícono de Lucide) no estaba importado en `Filters.jsx`, lo que provocaba un crash al intentar renderizar los chips de filtros activos.
+- **"7" flotando sobre dropdown**: Se corrigió un problema de contexto de apilamiento (stacking context) subiendo el `z-index` del contenedor de filtros a `z-10` para que el `backdrop-blur` no causara artefactos visuales con las tarjetas inferiores.
+- **Dropdowns tapados por KPI cards**: Los dropdowns de `Filtros` y `MultiSelect` se subieron de `z-50` a `z-[200]` para garantizar su visibilidad sobre cualquier otro componente de la UI.
+
+#### Filtros
+- Ícono `Filter` agregado correctamente a los imports de Lucide.
+- Ajuste de `z-index` en los selectores de columnas y filtros para consistencia total.
+
+#### Gráficos
+- **Scatter "Mapa de Industrias"**: 
+  - Color único por industria para facilitar la distinción visual.
+  - Labels con nombre encima de cada burbuja (eliminando la fricción de hacer hover).
+  - Número de deals ganados visible dentro de cada burbuja.
+  - Líneas de referencia en los promedios de X e Y para crear cuadrantes claros.
+  - Etiquetas de cuadrante explícitas (**Stars/Volumen/Difícil/Evitar**).
+  - Tamaño de burbuja proporcional a los deals ganados (representando éxito real, no solo volumen de intentos).
+- **Tabla Loop Analysis**: Columna "Deals" renombrada a "Won / Total", mostrando la brecha de eficiencia en cada loop.
+- **BarChart Pain Point**: Implementado highlight visual (barra ganadora al 100% opacidad, el resto al 55%) para dirigir la atención al dato más relevante.
+- **Insight "Mapa de Industrias"**: Ahora es dinámico y detecta 5 casos estratégicos: Stars, Alto valor, Cierre fácil, Deprioritizar y Mayor MRR generado.
+
+#### Componentes globales
+- **ChartCard**: Nueva prop `isEmpty` que muestra un estado vacío elegante (📭 Sin datos) cuando los filtros aplicados dejan el gráfico sin información, evitando visualizaciones rotas.
+- **Playbook cards (Retention)**: Se eliminó el borde superior de color por ser demasiado ruidoso; reemplazado por un indicador circular (`dot`) sutil junto al número en color semántico.
+- **Portfolio Health (Retention)**: Rediseño completo para mejorar la legibilidad. Se separó la barra (que ahora solo muestra el %) de las estadísticas detalladas (que ahora aparecen debajo con dots de color y etiquetas claras).
+
+#### Tipografía y Fondo
+- **KPI values**: Adopción de la fuente **DM Mono** para los números grandes. Esta tipografía monoespaciada garantiza una alineación consistente y una lectura tabular profesional.
+- **Dot pattern**: Se agregó un gradiente radial de puntos sutiles (`#CBD5E1`) en todo el cuerpo de la aplicación, dando profundidad y textura al diseño "Pure White" sin competir con el contenido.
+
+---
+
+### ⏺ Por qué se hizo cada cambio (Racional Técnico)
+
+#### Bugs corregidos
+- **Página en blanco**: En React, intentar usar un componente no definido (`undefined`) dentro del JSX lanza un error fatal que desmonta toda la aplicación. La importación del ícono era crítica para la estabilidad.
+- **Dropdowns y Stacking Context**: El uso de `backdrop-blur-sm` crea un nuevo contexto de apilamiento. Sin un `z-index` explícito y suficientemente alto, los elementos renderizados después en el DOM (como las KPI cards) se superponían visualmente a los dropdowns abiertos.
+
+#### Gráficos (Scatter & Bar)
+- **Colores por industria**: Sin ellos, el gráfico era monocromático. El color permite al cerebro agrupar y diferenciar puntos en milisegundos.
+- **Labels y Líneas de Promedio**: Reducen la carga cognitiva. El usuario no tiene que "explorar" el gráfico; el gráfico le "cuenta" la historia de los 4 cuadrantes operativos de inmediato.
+- **Tamaño = Deals Ganados**: En Growth, lo que importa es el éxito validado. El volumen total puede estar inflado por "ruido" de marketing que no convierte; las burbujas ahora representan valor real capturado.
+- **Highlight de opacidad**: Sigue el principio de jerarquía visual: resaltar lo importante y atenuar el contexto para que el ojo sepa dónde mirar primero.
+
+#### Componentes globales
+- **Empty States**: Un gráfico vacío sin explicación parece un bug. El empty state comunica que el sistema funciona correctamente pero los filtros son demasiado restrictivos.
+- **Rediseño de Portfolio Health**: La barra anterior intentaba comunicar demasiada información en un espacio muy reducido. Al separar el % visual de los datos numéricos, respetamos el principio de "una sola responsabilidad por elemento".
+
+#### Tipografía y Fondo
+- **DM Mono**: Los números en `Inter` pueden variar de ancho según el dígito, lo que causa que los KPIs "salten" o se vean desaliñados. Una fuente monoespaciada es el estándar de la industria para dashboards de datos por su precisión visual.
+- **Dot pattern**: En un diseño minimalista, el blanco absoluto puede sentirse "vacío". El patrón de puntos proporciona una rejilla visual implícita que ayuda a organizar el espacio y hace que las "cards" se sientan integradas en un entorno físico.
+
+---
+
+## 13. Estabilidad de Componentes Críticos (Portales)
+
+### ¿Por qué movimos el Modal a un React Portal?
+**Problema:** En el Explorador de Clientes, algunos usuarios reportaron que al hacer clic en un cliente, el fondo se oscurecía pero la caja de información no aparecía.
+**Causa:** El modal estaba atrapado en un **Stacking Context** (contexto de apilamiento) restringido por los filtros superiores y el ruido de fondo. Elementos con `backdrop-filter` pueden sepultar capas z-index incluso si estas tienen valores altos.
+**Decisión:** Refactorizamos `ClientDetail` para usar `createPortal(content, document.body)`. Esto "teletransporta" el modal fuera de la jerarquía de la tabla y lo coloca en la raíz del DOM, garantizando que sea el elemento más superficial de la aplicación. Es la solución definitiva para overlays en aplicaciones de alto rendimiento.
+
+### ¿Por qué usamos `animation-fill-mode: forwards`?
+**Problema:** Las animaciones CSS a veces revierten al estado inicial (`opacity: 0`) al terminar si el navegador pierde el foco o hay un micro-lag en el renderizado.
+**Decisión:** Forzamos el estado final de las animaciones. Esto asegura que el modal se mantenga visible y sólido una vez que termina su entrada, eliminando cualquier parpadeo o desaparición accidental.
+
+---
+
+## 14. Inteligencia de Datos y Estabilización Final
+
+### ¿Por qué Insights Dinámicos en todos los gráficos?
+**Problema:** Un dashboard con textos estáticos ("Los canales varían...") pierde utilidad en cuanto el usuario aplica un filtro. El texto deja de ser verdad y se convierte en ruido.
+**Decisión:** Desarrollamos funciones generadoras de insights (`insightFlagsFreq`, `insightCanalRisk`, `insightICPHeatmap`, etc.) que analizan el estado actual de los datos filtrados. Si el usuario filtra por "Vendedor Puma", el texto cambia para explicar específicamente el rendimiento de Puma. Esto cumple la promesa de ser un dashboard "Intelligence" y no solo "Analytics".
+
+### Corrección de "Crash Silencioso" en Modales
+**Problema:** Al migrar a Portales, una inconsistencia en los imports (falta de `React` y `createPortal` explícitos en el archivo) provocaba que el componente fallara antes de renderizar la UI, dejando solo el backdrop visible.
+**Decisión:** Se estabilizaron todos los componentes críticos con una política de **Imports Completos y Fallbacks de Datos**. Cada campo del JSON ahora tiene un fallback (`|| '—'`) para evitar crashes si el dataset del LLM es incompleto, garantizando una UI robusta y resiliente.
+
+---
